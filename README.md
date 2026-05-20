@@ -72,7 +72,7 @@ npm run dev
 
 | 角色 | 功能 |
 |------|------|
-| 学生 | 注册登录、提交作品、管理作品 |
+| 学生 | 提交作品、审核状态跟踪、查看评分与排行 |
 | 教师 | 匿名评分（创新性/技术难度/完成度/实用性）、排行榜 |
 | 管理员 | 审核发布、精选作品、评分批次、奖项配置、系统管理 |
 | 游客 | 浏览作品、排行榜、作品详情 |
@@ -81,26 +81,22 @@ npm run dev
 
 ```
 菁选/
-├── backend/          # 后端源码
-│   └── src/main/java/com/jingxuan/
-│       ├── config/         # 配置类
-│       ├── security/       # JWT 认证
-│       ├── modules/        # 业务模块
-│       │   ├── work/       # 作品管理
-│       │   ├── audit/      # 审核管理
-│       │   ├── score/      # 评分管理
-│       │   ├── publish/    # 发布管理
-│       │   ├── rank/       # 排行榜
-│       │   ├── sensitive/  # 内容审核
-│       │   └── ...
-│       └── adapter/        # API 适配控制器
-├── frontend/         # 前端源码
+├── backend/                 # 后端源码（Spring Boot + MyBatis-Plus）
+│   ├── src/main/java/com/jingxuan/
+│   │   ├── config/          # 配置类（Security、Jackson、Knife4j、DeepSeek）
+│   │   ├── security/        # JWT 认证过滤器与异常处理
+│   │   ├── modules/         # 业务模块（work、audit、score、rank、publish 等）
+│   │   ├── adapter/         # ★ 核心模式：各端 API 适配控制器
+│   │   ├── mapper/          # MyBatis-Plus Mapper
+│   │   └── common/          # BaseEntity、Result、PageResult
+│   └── sql/                 # 建表 SQL
+├── frontend/                # 前端源码（Vue 3 + TypeScript + Element Plus）
 │   └── src/
-│       ├── views/          # 页面（按角色分）
-│       ├── api/            # 接口封装
-│       ├── router/         # 路由
-│       └── layout/         # 布局
-└── docs/             # 文档
+│       ├── views/           # 页面（按角色 admin/student/teacher/public 分）
+│       ├── api/             # API 封装（含数据适配层：后端枚举/字段 → 前端格式）
+│       ├── router/          # 路由与鉴权守卫
+│       └── layout/          # 布局组件
+└── docs/                    # 设计文档与接口规范
 ```
 
 ## 评分规则

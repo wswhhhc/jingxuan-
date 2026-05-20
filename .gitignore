@@ -5,3 +5,10 @@ dist/
 node_modules/
 !.env.example
 .claude/
+uploads/
+*.d.ts
+docs/progress.md
+docs/findings.md
+docs/task_plan.md
+docs/修复规划路线.md
+docs/接口测试简报-*.md
