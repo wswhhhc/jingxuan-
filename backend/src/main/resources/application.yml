@@ -1,0 +1,66 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: jingxuan-backend
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 500MB
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+
+mybatis-plus:
+  type-aliases-package: com.jingxuan.entity
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    default-enum-type-handler: org.apache.ibatis.type.EnumOrdinalTypeHandler
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# Spring Security 忽略路径（无需认证）
+ignored:
+  paths: /auth/login,/api/auth/login,/auth/register,/swagger-ui/**,/v3/api-docs/**,/doc.html,/webjars/**,/favicon.ico,/uploads/**,/public/**,/comment/list/**
+
+# JWT 配置
+jwt:
+  secret: YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY3ODkwYWJjZGVmZ2hpamtsbW5vcA
+  expiration: 86400000  # 24小时
+
+# Knife4j 配置
+knife4j:
+  enable: true
+  setting:
+    language: zh-CN
+    enable-footer: false
+
+# DeepSeek 内容审核
+deepseek:
+  api-key: ${DEEPSEEK_API_KEY:}
+  api-url: https://api.deepseek.com/v1/chat/completions
+  model: deepseek-chat
+  timeout: 30000
+  fallback: reject  # reject | warning | review
+
+# 文件上传路径
+jingxuan:
+  upload:
+    path: ./uploads

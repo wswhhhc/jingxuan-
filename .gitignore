@@ -1,0 +1,7 @@
+.env
+*.log
+target/
+dist/
+node_modules/
+!.env.example
+.claude/
