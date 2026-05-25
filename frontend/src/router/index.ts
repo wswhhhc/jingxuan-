@@ -28,43 +28,48 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, _from, next) => {
+export function resolveAuthRedirect(to: {
+  meta: Record<string, any>
+  matched: Array<{ meta?: Record<string, any> }>
+}): string | undefined {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token')
 
-  // 公开页面（无需登录）
   if (to.meta.noAuth) {
-    next()
-    return
+    return undefined
   }
 
-  // 无 token → 跳登录
   if (!token) {
-    next('/login')
-    return
+    return '/login'
   }
 
-  // RBAC 角色校验
   const matchedRoles = to.matched.flatMap(r => (r.meta?.roles as string[]) || [])
-  if (matchedRoles.length > 0) {
-    let userInfo: Record<string, any> | null = null
-    try {
-      const raw = localStorage.getItem('userInfo')
-      if (raw) userInfo = JSON.parse(raw)
-    } catch { /* ignore */ }
-
-    if (!userInfo) {
-      next('/login')
-      return
-    }
-
-    const roleCode = (userInfo.roleCode || '').replace('ROLE_', '').toLowerCase()
-    if (!matchedRoles.includes(roleCode)) {
-      next('/login')
-      return
-    }
+  if (matchedRoles.length === 0) {
+    return undefined
   }
 
-  next()
+  let userInfo: Record<string, any> | null = null
+  try {
+    const raw = localStorage.getItem('userInfo')
+    if (raw) userInfo = JSON.parse(raw)
+  } catch {
+    userInfo = null
+  }
+
+  if (!userInfo) {
+    return '/login'
+  }
+
+  const roleCode = (userInfo.roleCode || '').replace('ROLE_', '').toLowerCase()
+  if (!matchedRoles.includes(roleCode)) {
+    return '/login'
+  }
+
+  return undefined
+}
+
+router.beforeEach((to, _from, next) => {
+  const redirect = resolveAuthRedirect(to)
+  next(redirect)
 })
 
 export default router

@@ -517,6 +517,10 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
             }
         }
 
+        // 点赞数/浏览数
+        vo.setLikeCount(work.getLikeCount() != null ? work.getLikeCount() : 0);
+        vo.setViewCount(work.getViewCount() != null ? work.getViewCount() : 0);
+
         return vo;
     }
 

@@ -6,6 +6,7 @@ export interface PublicWorkListParams {
   keyword?: string
   techStack?: string
   classId?: number
+  tagIds?: number[]
   submitTimeBegin?: string
   submitTimeEnd?: string
   sortBy?: string
@@ -16,6 +17,13 @@ export interface PageResult<T> {
   total: number
   page: number
   pageSize: number
+}
+
+export interface TagItem {
+  id: number
+  name: string
+  color: string
+  type: string
 }
 
 /* ============ 状态映射（与 student/work.ts 保持一致） ============ */
@@ -53,6 +61,10 @@ function adaptWorkEntity(item: any): any {
     featured: item.featured,
     score: item.avgScore != null ? Number(item.avgScore) : undefined,
     rank: item.rank,
+    likeCount: item.likeCount ?? 0,
+    viewCount: item.viewCount ?? 0,
+    liked: item.liked ?? false,
+    tags: item.tags || [],
   }
 }
 
@@ -88,6 +100,10 @@ function adaptDetailVO(item: any): any {
     score: item.avgScore != null ? Number(item.avgScore) : undefined,
     rank: item.rank,
     previewUrl: item.previewUrl,
+    likeCount: item.likeCount ?? 0,
+    viewCount: item.viewCount ?? 0,
+    liked: item.liked ?? false,
+    tags: item.tags || [],
   }
 }
 
@@ -112,6 +128,7 @@ export async function getPublicWorkList(params: PublicWorkListParams) {
       keyword: params.keyword || undefined,
       techStack: params.techStack || undefined,
       classId: params.classId || undefined,
+      tagIds: params.tagIds?.length ? params.tagIds.join(',') : undefined,
       submitTimeBegin: params.submitTimeBegin || undefined,
       submitTimeEnd: params.submitTimeEnd || undefined,
     },
@@ -137,4 +154,16 @@ export async function getPublicWorkDetail(id: string | number) {
   })
   res.data = adaptDetailVO(res.data)
   return res
+}
+
+export async function getPublicTagList() {
+  return request.get<TagItem[]>('/public/tags')
+}
+
+export async function toggleLike(id: string | number) {
+  return request.post<{ liked: boolean; likeCount: number }>(`/works/${id}/like`)
+}
+
+export async function getLikeStatus(id: string | number) {
+  return request.get<{ liked: boolean; likeCount: number }>(`/public/works/${id}/like-status`)
 }

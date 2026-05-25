@@ -41,7 +41,7 @@
             value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
-        <el-form-item>
+        <el-form-item class="audit-filters__actions">
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
@@ -394,6 +394,10 @@ onMounted(() => {
 
 .audit-filters__range {
   min-width: 340px;
+}
+
+.audit-filters__actions {
+  margin-top: 8px;
 }
 
 .pagination-wrap {

@@ -64,7 +64,36 @@
           />
         </el-form-item>
         <el-form-item label="适用范围" prop="classScopes">
-          <el-input v-model="form.classScopes" placeholder="班级范围，多个以逗号分隔" />
+          <div class="scope-field">
+            <el-switch
+              v-model="form.allSchool"
+              :active-value="true"
+              :inactive-value="false"
+              active-text="全校可参与"
+              inactive-text="按班级参与"
+            />
+            <el-select
+              v-model="form.classScopeIds"
+              multiple
+              filterable
+              clearable
+              collapse-tags
+              collapse-tags-tooltip
+              :disabled="form.allSchool"
+              placeholder="请选择可参与班级"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in classes"
+                :key="item.id"
+                :label="item.dictLabel"
+                :value="item.dictLabel"
+              />
+            </el-select>
+            <div class="scope-field__hint">
+              {{ form.allSchool ? '当前批次面向全校开放参与。' : '可多选班级，保存时会自动整理适用范围。' }}
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" />
@@ -147,10 +176,13 @@ const submitting = ref(false)
 const isEdit = ref(false)
 const detail = ref<ScoreBatchItem | null>(null)
 const formRef = ref<any>(null)
+const classes = ref<{ id: number; dictLabel: string }[]>([])
 
 const form = reactive({
   batchName: '',
   classScopes: '',
+  allSchool: false,
+  classScopeIds: [] as string[],
   status: 1 as number,
   id: undefined as number | undefined,
   timeRange: null as [string, string] | null
@@ -158,7 +190,54 @@ const form = reactive({
 
 const rules = {
   batchName: [{ required: true, message: '请输入批次名称', trigger: 'blur' }],
-  timeRange: [{ required: true, message: '请选择时间范围', trigger: 'change' }]
+  timeRange: [{ required: true, message: '请选择时间范围', trigger: 'change' }],
+  classScopes: [{
+    validator: (_rule: unknown, _value: unknown, callback: (error?: Error) => void) => {
+      if (form.allSchool || form.classScopeIds.length > 0) {
+        callback()
+        return
+      }
+      callback(new Error('请选择至少一个班级，或启用全校可参与'))
+    },
+    trigger: 'change'
+  }]
+}
+
+const ALL_SCHOOL_LABEL = '全校可参与'
+
+const normalizeClassScopes = (value?: string) => {
+  const raw = (value || '').trim()
+  if (!raw) {
+    return {
+      allSchool: false,
+      classScopeIds: [] as string[]
+    }
+  }
+
+  if (raw === ALL_SCHOOL_LABEL || raw === '全校' || raw.toLowerCase() === 'all') {
+    return {
+      allSchool: true,
+      classScopeIds: [] as string[]
+    }
+  }
+
+  return {
+    allSchool: false,
+    classScopeIds: raw.split(/[,，]/).map(item => item.trim()).filter(Boolean)
+  }
+}
+
+const serializeClassScopes = () => {
+  form.classScopes = form.allSchool ? ALL_SCHOOL_LABEL : form.classScopeIds.join(', ')
+}
+
+const loadClasses = async () => {
+  try {
+    const res = await request.get('/admin/dict/classes')
+    classes.value = res.data || []
+  } catch {
+    classes.value = []
+  }
 }
 
 const loadList = async () => {
@@ -178,6 +257,9 @@ const openDialog = (row?: ScoreBatchItem) => {
     form.id = row.id
     form.batchName = row.batchName
     form.classScopes = row.classScopes
+    const parsedScopes = normalizeClassScopes(row.classScopes)
+    form.allSchool = parsedScopes.allSchool
+    form.classScopeIds = parsedScopes.classScopeIds
     form.status = row.status
     form.timeRange = [row.startTime, row.endTime]
   } else {
@@ -185,6 +267,8 @@ const openDialog = (row?: ScoreBatchItem) => {
     form.id = undefined
     form.batchName = ''
     form.classScopes = ''
+    form.allSchool = false
+    form.classScopeIds = []
     form.status = 1
     form.timeRange = null
   }
@@ -202,9 +286,12 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
+    serializeClassScopes()
     const { timeRange, ...rest } = form
     const data = {
       ...rest,
+      classScopeIds: undefined,
+      allSchool: undefined,
       startTime: timeRange?.[0],
       endTime: timeRange?.[1]
     }
@@ -272,7 +359,10 @@ const unpublishRanking = async (batchId: number) => {
   } catch { /* handled */ }
 }
 
-onMounted(loadList)
+onMounted(() => {
+  loadList()
+  loadClasses()
+})
 </script>
 
 <style scoped>
@@ -294,5 +384,18 @@ onMounted(loadList)
   min-width: 0;
   margin-left: 0;
   padding-inline: 14px;
+}
+
+.scope-field {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scope-field__hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 </style>

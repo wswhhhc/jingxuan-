@@ -23,4 +23,6 @@ public class Work extends BaseEntity {
     private Long submitterId;
     private LocalDateTime submitTime;
     private Long batchId;
+    private Integer viewCount;
+    private Integer likeCount;
 }

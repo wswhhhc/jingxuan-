@@ -1,6 +1,7 @@
 package com.jingxuan.modules.adapter;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jingxuan.common.PageResult;
 import com.jingxuan.common.Result;
@@ -14,10 +15,13 @@ import com.jingxuan.entity.SysNotification;
 import com.jingxuan.entity.SysUser;
 import com.jingxuan.entity.Work;
 import com.jingxuan.entity.WorkPublish;
+import com.jingxuan.entity.WorkTag;
 import com.jingxuan.mapper.SysUserMapper;
+import com.jingxuan.mapper.TagMapper;
 import com.jingxuan.mapper.WorkAuditMapper;
 import com.jingxuan.mapper.WorkMapper;
 import com.jingxuan.mapper.WorkPublishMapper;
+import com.jingxuan.mapper.WorkTagMapper;
 import com.jingxuan.modules.prize.service.RewardIssueService;
 import com.jingxuan.modules.audit.dto.AuditHistoryVO;
 import com.jingxuan.modules.audit.dto.AuditRequest;
@@ -86,6 +90,8 @@ public class AdminApiController {
     private final RewardIssueService rewardIssueService;
     private final ScoreService scoreService;
     private final NotificationService notificationService;
+    private final TagMapper tagMapper;
+    private final WorkTagMapper workTagMapper;
 
     // ==================== Dashboard ====================
 
@@ -582,5 +588,41 @@ public class AdminApiController {
         }
 
         return Result.ok(data);
+    }
+
+    // ==================== Tag Management ====================
+
+    @GetMapping("/admin/tags")
+    @Operation(summary = "获取标签列表")
+    public Result<List<com.jingxuan.entity.Tag>> listTags(@RequestParam(required = false) String type) {
+        return Result.ok(tagMapper.selectList(
+                Wrappers.<com.jingxuan.entity.Tag>lambdaQuery()
+                        .eq(com.jingxuan.entity.Tag::getDeleted, 0)
+                        .eq(type != null && !type.isBlank(), com.jingxuan.entity.Tag::getType, type)
+                        .orderByAsc(com.jingxuan.entity.Tag::getSort)));
+    }
+
+    @PostMapping("/admin/tags")
+    @Operation(summary = "创建标签")
+    public Result<Void> createTag(@Valid @RequestBody com.jingxuan.entity.Tag tag) {
+        tagMapper.insert(tag);
+        return Result.ok();
+    }
+
+    @PutMapping("/admin/tags/{id}")
+    @Operation(summary = "更新标签")
+    public Result<Void> updateTag(@PathVariable Long id, @RequestBody com.jingxuan.entity.Tag tag) {
+        tag.setId(id);
+        tagMapper.updateById(tag);
+        return Result.ok();
+    }
+
+    @DeleteMapping("/admin/tags/{id}")
+    @Operation(summary = "删除标签")
+    public Result<Void> deleteTag(@PathVariable Long id) {
+        tagMapper.deleteById(id);
+        workTagMapper.delete(Wrappers.<WorkTag>lambdaQuery()
+                .eq(WorkTag::getTagId, id));
+        return Result.ok();
     }
 }

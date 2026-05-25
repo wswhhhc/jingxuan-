@@ -19,6 +19,7 @@ import com.jingxuan.modules.score.dto.ScoreSummaryVO;
 import com.jingxuan.modules.score.dto.ScoreVO;
 import com.jingxuan.modules.score.service.ScoreService;
 import com.jingxuan.modules.log.service.LogService;
+import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.rank.service.RankService;
 import com.jingxuan.modules.sensitive.service.DeepSeekReviewService;
 import com.jingxuan.security.SecurityUtils;
@@ -61,6 +62,9 @@ public class ScoreServiceImpl extends ServiceImpl<WorkScoreMapper, WorkScore> im
 
     @Autowired
     private RankService rankService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -147,7 +151,20 @@ public class ScoreServiceImpl extends ServiceImpl<WorkScoreMapper, WorkScore> im
 
         logService.recordAction("提交评分", "作品", request.getWorkId());
 
-        // 5. 刷新排行榜缓存（自动触发）
+        // 5. 发送通知给作品提交者
+        try {
+            notificationService.sendNotification(
+                    work.getSubmitterId(),
+                    "作品收到新评分",
+                    "您的作品《" + work.getTitle() + "》收到教师评分，总分：" + total,
+                    "score",
+                    work.getId()
+            );
+        } catch (Exception e) {
+            log.warn("发送评分通知失败", e);
+        }
+
+        // 6. 刷新排行榜缓存（自动触发）
         if (work.getBatchId() != null) {
             try {
                 rankService.refreshRankCache(work.getBatchId());

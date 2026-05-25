@@ -1,0 +1,83 @@
+package com.jingxuan.modules.adapter;
+
+import com.jingxuan.BaseApiTest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@DisplayName("StudentSubmitApi - 学生提交审核集成测试")
+class StudentSubmitApiTest extends BaseApiTest {
+
+    @Test
+    @DisplayName("无附件提交返回 400")
+    void submitWithoutAttachment() {
+        ApiResponse resp = studentApi.post("/student/works/6/submit", null);
+        assertEquals(400, resp.getCode(), "无附件提交应返回 400");
+    }
+
+    @Test
+    @DisplayName("上传附件后提交审核成功")
+    void submitWithAttachment() {
+        String title = "提交审核测试-" + System.currentTimeMillis();
+        ApiResponse createResp = testStuApi.post("/student/works", Map.of(
+                "title", title,
+                "summary", "用于提交流程验证",
+                "techStack", "Java/Spring Boot"
+        ));
+        createResp.assertOk();
+        long workId = createResp.getDataNode().asLong();
+
+        String attachmentId = uploadAttachmentForWork(workId, "submit-flow.zip");
+
+        ApiResponse updateResp = testStuApi.put("/student/works/" + workId, Map.of(
+                "attachmentIds", java.util.List.of(attachmentId)
+        ));
+        updateResp.assertOk();
+
+        ApiResponse submitResp = testStuApi.post("/student/works/" + workId + "/submit", null);
+        submitResp.assertOk();
+    }
+
+    private String uploadAttachmentForWork(long workId, String filename) {
+        byte[] content = ("content-for-" + filename).getBytes();
+        ByteArrayResource fileResource = new ByteArrayResource(content) {
+            @Override
+            public String getFilename() {
+                return filename;
+            }
+        };
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.setBearerAuth(login("teststu", "test123"));
+
+        LinkedMultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", fileResource);
+        body.add("workId", String.valueOf(workId));
+
+        ResponseEntity<String> resp = restTemplate.exchange(
+                "http://localhost:" + port + "/api/file/upload",
+                HttpMethod.POST,
+                new HttpEntity<>(body, headers),
+                String.class);
+
+        assertEquals(200, resp.getStatusCode().value(), "附件上传失败: " + resp.getBody());
+        try {
+            var root = objectMapper.readTree(resp.getBody());
+            assertEquals(200, root.get("code").asInt(), "附件上传业务失败: " + resp.getBody());
+            return root.get("data").get("id").asText();
+        } catch (Exception e) {
+            throw new RuntimeException("解析附件上传响应失败: " + resp.getBody(), e);
+        }
+    }
+}

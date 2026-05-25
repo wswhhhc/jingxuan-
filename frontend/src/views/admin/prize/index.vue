@@ -62,7 +62,11 @@
           </div>
 
           <el-table :data="issueList" v-loading="issueLoading" stripe>
-            <el-table-column prop="id" label="编号" width="70" />
+            <el-table-column label="编号" width="70">
+              <template #default="{ $index }">
+                {{ getIssueRowIndex($index) }}
+              </template>
+            </el-table-column>
             <el-table-column prop="rewardName" label="奖项" width="120" />
             <el-table-column prop="workTitle" label="作品" min-width="160" show-overflow-tooltip />
             <el-table-column label="状态" width="80">
@@ -267,6 +271,8 @@ const loadIssueList = async () => {
     issueLoading.value = false
   }
 }
+
+const getIssueRowIndex = (index: number) => (issuePage.value - 1) * issueSize.value + index + 1
 
 const showIssueDialog = () => {
   issueForm.rewardId = 0

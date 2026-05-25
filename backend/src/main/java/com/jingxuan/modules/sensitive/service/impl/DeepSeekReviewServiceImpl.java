@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jingxuan.common.Result;
 import com.jingxuan.config.DeepSeekConfig;
 import com.jingxuan.modules.sensitive.service.DeepSeekReviewService;
+import com.jingxuan.modules.sensitive.service.SensitiveWordDFA;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,8 @@ public class DeepSeekReviewServiceImpl implements DeepSeekReviewService {
 
     private final DeepSeekConfig deepSeekConfig;
     private final ObjectMapper objectMapper;
+    private final SensitiveWordDFA sensitiveWordDFA;
+
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
@@ -49,105 +52,26 @@ public class DeepSeekReviewServiceImpl implements DeepSeekReviewService {
 
     private static final int MAX_RETRIES = 2;
 
+    // ==================== 公开 API ====================
+
     @Override
     public ReviewResult review(String text, String scene) {
+        // 空文本直接放行
         if (text == null || text.isBlank()) {
             return ReviewResult.pass();
         }
 
-        String apiKey = deepSeekConfig.getApiKey();
-        if (apiKey == null || apiKey.isBlank()) {
-            log.warn("DeepSeek API Key 未配置，跳过内容审核（仅开发环境生效）");
-            return ReviewResult.pass();
+        // ── 第一阶段：DFA 快速词匹配 ──
+        // 高置信度违禁词命中 → 直接拒绝（无需 AI 确认，节省 API 调用）
+        if (sensitiveWordDFA.contains(text)) {
+            List<SensitiveWordDFA.Hit> hits = sensitiveWordDFA.findAll(text);
+            log.info("DFA 命中敏感词，直接拒绝 [scene={}]: {}", scene, hits);
+            return ReviewResult.fail("sensitive_word",
+                    "内容包含违禁词：" + hits.get(0).word());
         }
 
-        Map<String, Object> requestBody = Map.of(
-                "model", deepSeekConfig.getModel(),
-                "messages", List.of(
-                        Map.of("role", "system", "content", SYSTEM_PROMPT),
-                        Map.of("role", "user", "content", text)
-                ),
-                "response_format", Map.of("type", "json_object")
-        );
-
-        String jsonBody;
-        try {
-            jsonBody = objectMapper.writeValueAsString(requestBody);
-        } catch (Exception e) {
-            log.error("序列化请求体失败", e);
-            return handleFallback("序列化异常");
-        }
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(deepSeekConfig.getApiUrl()))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .timeout(Duration.ofMillis(deepSeekConfig.getTimeout()))
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                .build();
-
-        // 重试循环：首次调用 + MAX_RETRIES 次重试
-        Exception lastException = null;
-        Integer lastStatusCode = null;
-        String lastBody = null;
-
-        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                if (attempt > 0) {
-                    log.info("DeepSeek API 重试第 {} 次", attempt);
-                    Thread.sleep(500L * attempt); // 递增等待：500ms, 1000ms
-                }
-
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-                if (response.statusCode() != 200) {
-                    log.error("DeepSeek API 返回错误: status={}, body={}", response.statusCode(), response.body());
-                    lastStatusCode = response.statusCode();
-                    lastBody = response.body();
-                    // HTTP 4xx 错误不重试（如 401 认证失败、400 请求格式错误）
-                    if (response.statusCode() >= 400 && response.statusCode() < 500) {
-                        return handleApiError(response.statusCode());
-                    }
-                    continue; // 5xx 服务端错误可重试
-                }
-
-                JsonNode root = objectMapper.readTree(response.body());
-                String content = root.at("/choices/0/message/content").asText("");
-                if (content.isBlank()) {
-                    log.warn("DeepSeek API 返回内容为空，body={}", response.body());
-                    continue; // 空内容可重试
-                }
-
-                JsonNode result = objectMapper.readTree(content);
-                boolean passed = result.path("passed").asBoolean(true);
-                if (passed) {
-                    return ReviewResult.pass();
-                }
-
-                return ReviewResult.fail(
-                        result.path("category").asText("unknown"),
-                        result.path("reason").asText("内容违规")
-                );
-
-            } catch (java.net.http.HttpTimeoutException e) {
-                lastException = e;
-                log.warn("DeepSeek API 超时 (attempt {}/{})", attempt + 1, MAX_RETRIES + 1);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return handleFallback("审核请求中断");
-            } catch (Exception e) {
-                lastException = e;
-                log.warn("DeepSeek API 调用异常 (attempt {}/{})", attempt + 1, MAX_RETRIES + 1, e);
-            }
-        }
-
-        // 所有重试耗尽，执行兜底策略
-        if (lastStatusCode != null) {
-            return handleApiError(lastStatusCode);
-        }
-        return handleFallback(lastException != null
-                ? "API 调用失败（已重试" + MAX_RETRIES + "次）: " + lastException.getMessage()
-                : "API 返回为空（已重试" + MAX_RETRIES + "次）");
+        // ── 第二阶段：DFA 未命中 → 交由 AI 做语义审核 ──
+        return callAISync(text, scene);
     }
 
     @Override
@@ -184,6 +108,104 @@ public class DeepSeekReviewServiceImpl implements DeepSeekReviewService {
             return Result.fail("DeepSeek API 连接失败: " + e.getMessage());
         }
     }
+
+    // ==================== AI 调用核心 ====================
+
+    /**
+     * 同步调用 AI 审核（带重试）
+     */
+    private ReviewResult callAISync(String text, String scene) {
+        String apiKey = deepSeekConfig.getApiKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("DeepSeek API Key 未配置，跳过 AI 审核");
+            return ReviewResult.pass();
+        }
+
+        Map<String, Object> requestBody = Map.of(
+                "model", deepSeekConfig.getModel(),
+                "messages", List.of(
+                        Map.of("role", "system", "content", SYSTEM_PROMPT),
+                        Map.of("role", "user", "content", text)
+                ),
+                "response_format", Map.of("type", "json_object")
+        );
+
+        String jsonBody;
+        try {
+            jsonBody = objectMapper.writeValueAsString(requestBody);
+        } catch (Exception e) {
+            log.error("序列化请求体失败", e);
+            return handleFallback("序列化异常");
+        }
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(deepSeekConfig.getApiUrl()))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .timeout(Duration.ofMillis(deepSeekConfig.getTimeout()))
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        Exception lastException = null;
+        Integer lastStatusCode = null;
+
+        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                if (attempt > 0) {
+                    log.info("DeepSeek API 重试第 {} 次", attempt);
+                    Thread.sleep(500L * attempt);
+                }
+
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() != 200) {
+                    log.error("DeepSeek API 返回错误: status={}, body={}", response.statusCode(), response.body());
+                    lastStatusCode = response.statusCode();
+                    if (response.statusCode() >= 400 && response.statusCode() < 500) {
+                        return handleApiError(response.statusCode());
+                    }
+                    continue;
+                }
+
+                JsonNode root = objectMapper.readTree(response.body());
+                String content = root.at("/choices/0/message/content").asText("");
+                if (content.isBlank()) {
+                    log.warn("DeepSeek API 返回内容为空，body={}", response.body());
+                    continue;
+                }
+
+                JsonNode result = objectMapper.readTree(content);
+                boolean passed = result.path("passed").asBoolean(true);
+                if (passed) {
+                    return ReviewResult.pass();
+                }
+
+                return ReviewResult.fail(
+                        result.path("category").asText("unknown"),
+                        result.path("reason").asText("内容违规")
+                );
+
+            } catch (java.net.http.HttpTimeoutException e) {
+                lastException = e;
+                log.warn("DeepSeek API 超时 (attempt {}/{})", attempt + 1, MAX_RETRIES + 1);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return handleFallback("审核请求中断");
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("DeepSeek API 调用异常 (attempt {}/{})", attempt + 1, MAX_RETRIES + 1, e);
+            }
+        }
+
+        if (lastStatusCode != null) {
+            return handleApiError(lastStatusCode);
+        }
+        return handleFallback(lastException != null
+                ? "API 调用失败（已重试" + MAX_RETRIES + "次）: " + lastException.getMessage()
+                : "API 返回为空（已重试" + MAX_RETRIES + "次）");
+    }
+
+    // ==================== 兜底策略 ====================
 
     private ReviewResult handleApiError(int statusCode) {
         String fallback = deepSeekConfig.getFallback();

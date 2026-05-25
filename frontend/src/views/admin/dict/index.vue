@@ -19,8 +19,12 @@
         </div>
       </div>
 
-      <el-table :data="items" v-loading="loading" stripe v-if="currentType">
-        <el-table-column prop="id" label="编号" width="60" />
+      <el-table :data="pagedItems" v-loading="loading" stripe v-if="currentType">
+        <el-table-column label="编号" width="60">
+          <template #default="{ $index }">
+            {{ getRowIndex($index) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="dictLabel" label="标签" width="160" />
         <el-table-column prop="dictValue" label="值" width="160" />
         <el-table-column prop="sort" label="排序" width="70" />
@@ -111,6 +115,11 @@ const currentTypeLabel = computed(() => {
   return arr && arr.length > 0 ? `共 ${total.value} 项` : ''
 })
 
+const pagedItems = computed(() => {
+  const start = (page.value - 1) * size.value
+  return items.value.slice(start, start + size.value)
+})
+
 const loadAll = async () => {
   loading.value = true
   try {
@@ -132,6 +141,8 @@ const loadItems = () => {
   items.value = all
   total.value = all.length
 }
+
+const getRowIndex = (index: number) => (page.value - 1) * size.value + index + 1
 
 const onTypeChange = () => {
   page.value = 1

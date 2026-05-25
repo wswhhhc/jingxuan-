@@ -50,7 +50,11 @@
           highlight-current-row
           @row-click="selectWork"
         >
-          <el-table-column prop="id" label="作品 ID" width="110" />
+          <el-table-column label="编号" width="76">
+            <template #default="{ $index }">
+              {{ getRowIndex($index) }}
+            </template>
+          </el-table-column>
           <el-table-column prop="title" label="作品名称" min-width="220" show-overflow-tooltip />
           <el-table-column prop="techStack" label="技术栈" min-width="150" show-overflow-tooltip />
           <el-table-column label="评分状态" width="108">
@@ -217,6 +221,8 @@ const totalScore = computed(() =>
 const techStackList = computed(() =>
   (selectedWork.value?.techStack || '').split(',').map(item => item.trim()).filter(Boolean)
 )
+
+const getRowIndex = (index: number) => (query.page - 1) * query.size + index + 1
 
 const resetScoreForm = () => {
   scoreForm.innovation = 15

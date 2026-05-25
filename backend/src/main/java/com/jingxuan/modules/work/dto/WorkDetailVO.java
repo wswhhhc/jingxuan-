@@ -73,4 +73,16 @@ public class WorkDetailVO {
 
     @Schema(description = "平均分（审核通过且有评分时）")
     private String avgScore;
+
+    @Schema(description = "点赞数")
+    private Integer likeCount;
+
+    @Schema(description = "浏览数")
+    private Integer viewCount;
+
+    @Schema(description = "当前用户是否已点赞")
+    private Boolean liked;
+
+    @Schema(description = "标签列表")
+    private java.util.List<String> tags;
 }

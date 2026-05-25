@@ -1,0 +1,32 @@
+spring:
+  # 测试数据库（使用 H2 内存数据库，或改为独立 MySQL）
+  datasource:
+    url: jdbc:h2:mem:jingxuan_test;DB_CLOSE_DELAY=-1;MODE=MySQL;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  # H2 Web Console（可选，调试用）
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  # SQL 初始化（由测试代码通过 @Sql 控制，这里不自动执行）
+  sql:
+    init:
+      mode: never
+
+  data:
+    redis:
+      # 测试环境跳过 Redis，需在代码中处理 Redis 不可用降级
+      host: localhost
+      port: 6379
+
+# DeepSeek 审核测试环境直接放行
+deepseek:
+  fallback: bypass
+
+logging:
+  level:
+    com.jingxuan: warn
+    com.baomidou: warn
+    org.springframework: warn

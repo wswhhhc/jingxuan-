@@ -14,12 +14,25 @@
             <span>指导教师：{{ work.advisor || '未标注' }}</span>
             <span>提交时间：{{ work.submitTime }}</span>
           </div>
+          <div class="detail-hero__tags" v-if="work.tags?.length">
+            <el-tag v-for="tag in work.tags" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
+          </div>
           <p class="detail-hero__summary">{{ work.summary || '暂无作品简介。' }}</p>
           <div class="detail-hero__actions">
             <el-tag v-if="work.featured" type="warning" effect="dark">精选作品</el-tag>
             <el-tag v-if="work.score !== undefined" type="success" effect="plain">评分：{{ work.score }} 分</el-tag>
             <el-tag v-if="work.rank" type="danger" effect="plain">排名：第 {{ work.rank }} 名</el-tag>
             <el-button v-if="work.previewUrl" type="primary" @click="openPreview">在线体验</el-button>
+          </div>
+          <div class="detail-hero__stats">
+            <span class="detail-stat" @click="handleLike">
+              <el-icon :size="18" :class="{ 'is-liked': liked }"><StarFilled /></el-icon>
+              {{ likeCount }}
+            </span>
+            <span class="detail-stat">
+              <el-icon :size="18"><View /></el-icon>
+              {{ viewCount }}
+            </span>
           </div>
         </div>
 
@@ -188,8 +201,8 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Picture, Files } from '@element-plus/icons-vue'
-import { getPublicWorkDetail } from '../../api/public/work'
+import { Picture, Files, StarFilled, View } from '@element-plus/icons-vue'
+import { getPublicWorkDetail, toggleLike } from '../../api/public/work'
 import { getCommentList, addComment, deleteComment } from '../../api/public/comment'
 import type { CommentItem } from '../../api/public/comment'
 import type { UserInfo } from '../../api/student/auth'
@@ -215,6 +228,9 @@ const replyTargetId = ref<string | number | null>(null)
 const replyTargetName = ref('')
 const replySending = ref(false)
 const currentUser = ref<UserInfo | null>(getCachedUserInfo())
+const liked = ref(false)
+const likeCount = ref(0)
+const viewCount = ref(0)
 
 const techTags = computed(() => work.value?.techStack?.split(',').map((t) => t.trim()).filter(Boolean) || [])
 const isLoggedIn = ref(hasLoginToken())
@@ -260,11 +276,30 @@ async function loadDetail() {
   loading.value = true
   try {
     const res = await getPublicWorkDetail(getRouteWorkId())
-    work.value = res.data
+    const data = res.data
+    work.value = data
+    liked.value = data.liked ?? false
+    likeCount.value = data.likeCount ?? 0
+    viewCount.value = data.viewCount ?? 0
   } catch {
     ElMessage.error('加载作品详情失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function handleLike() {
+  if (!isLoggedIn.value) {
+    ElMessage.info('登录后可点赞')
+    goToLogin()
+    return
+  }
+  try {
+    const res = await toggleLike(getRouteWorkId())
+    liked.value = res.data.liked
+    likeCount.value = res.data.likeCount
+  } catch {
+    // ignore
   }
 }
 
@@ -422,6 +457,12 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
+.detail-hero__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .detail-hero__summary {
   margin: 0;
   color: var(--text-secondary);
@@ -433,6 +474,35 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.detail-hero__stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-top: 6px;
+}
+
+.detail-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: default;
+}
+
+.detail-stat:first-child {
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.detail-stat:first-child:hover {
+  color: #e74c3c;
+}
+
+.detail-stat :deep(.is-liked) {
+  color: #e74c3c;
 }
 
 .detail-hero__cover {

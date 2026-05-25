@@ -51,7 +51,11 @@
       </div>
 
       <el-table :data="list" v-loading="loading" stripe>
-        <el-table-column prop="id" label="ID" width="90" />
+        <el-table-column label="编号" width="72">
+          <template #default="{ $index }">
+            {{ getRowIndex($index) }}
+          </template>
+        </el-table-column>
         <el-table-column label="作品" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="work-cell">
@@ -149,6 +153,8 @@ const handleReset = () => {
   query.contentKeyword = ''
   loadList()
 }
+
+const getRowIndex = (index: number) => (query.page - 1) * query.size + index + 1
 
 const openWork = (workId: number) => {
   window.open(`/works/${workId}`, '_blank')

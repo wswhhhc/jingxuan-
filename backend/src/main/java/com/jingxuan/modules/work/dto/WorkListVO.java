@@ -47,4 +47,16 @@ public class WorkListVO {
 
     @Schema(description = "当前教师是否已评分")
     private Boolean scored;
+
+    @Schema(description = "点赞数")
+    private Integer likeCount;
+
+    @Schema(description = "浏览数")
+    private Integer viewCount;
+
+    @Schema(description = "当前用户是否已点赞")
+    private Boolean liked;
+
+    @Schema(description = "标签列表")
+    private java.util.List<String> tags;
 }

@@ -16,6 +16,7 @@ import com.jingxuan.mapper.SysUserMapper;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.security.JwtTokenProvider;
 import com.jingxuan.security.SecurityUtils;
+import com.jingxuan.security.TokenBlacklistService;
 import com.jingxuan.util.IpUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
     private final SysDictMapper sysDictMapper;
     private final PasswordEncoder passwordEncoder;
     private final LogService logService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     public LoginResponse login(LoginRequest request) {
@@ -158,8 +160,18 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout() {
-        // JWT 无状态，客户端删除 Token 即可
-        // 如需服务端失效，可接入 Redis 黑名单
+        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs == null) {
+            return;
+        }
+        HttpServletRequest request = attrs.getRequest();
+        String bearerToken = request.getHeader(com.jingxuan.constant.SecurityConstants.TOKEN_HEADER);
+        if (bearerToken == null || !bearerToken.startsWith(com.jingxuan.constant.SecurityConstants.TOKEN_PREFIX)) {
+            return;
+        }
+        String token = bearerToken.substring(com.jingxuan.constant.SecurityConstants.TOKEN_PREFIX.length());
+        long ttl = jwtTokenProvider.getRemainingValidity(token);
+        tokenBlacklistService.blacklist(token, ttl);
     }
 
     private UserInfoVO buildUserInfo(SysUser user) {

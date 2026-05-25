@@ -52,6 +52,9 @@
             <AppThemeToggle />
             <el-dropdown trigger="click">
               <span class="workspace-layout__user">
+                <el-avatar :size="34" :src="userInfo?.avatar || undefined">
+                  {{ avatarFallback }}
+                </el-avatar>
                 <span>{{ userInfo?.realName || '教师' }}</span>
                 <el-icon><ArrowDown /></el-icon>
               </span>
@@ -80,12 +83,25 @@ import { HomeFilled, Reading, EditPen, TrendCharts, Bell, ArrowDown } from '@ele
 import { getUnreadCount } from '../api/teacher/notify'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 
+function getCachedUserInfo() {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
 const route = useRoute()
 const router = useRouter()
-const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'))
+const userInfo = ref(getCachedUserInfo())
 const unreadCount = ref(0)
 let unreadTimer: ReturnType<typeof setInterval> | null = null
 const hasUnread = computed(() => unreadCount.value > 0)
+const avatarFallback = computed(() => userInfo.value?.realName?.charAt?.(0) || '师')
+const syncUserInfo = () => {
+  userInfo.value = getCachedUserInfo()
+}
 
 const descriptions: Record<string, string> = {
   '/teacher/dashboard': '在同一视图里掌握评审节奏、通知与近期工作。',
@@ -105,14 +121,19 @@ const fetchUnread = async () => {
 }
 
 onMounted(() => {
+  syncUserInfo()
   fetchUnread()
   unreadTimer = setInterval(fetchUnread, 30000)
   window.addEventListener('teacher-notify-changed', fetchUnread)
+  window.addEventListener('focus', syncUserInfo)
+  window.addEventListener('storage', syncUserInfo)
 })
 
 onUnmounted(() => {
   if (unreadTimer) clearInterval(unreadTimer)
   window.removeEventListener('teacher-notify-changed', fetchUnread)
+  window.removeEventListener('focus', syncUserInfo)
+  window.removeEventListener('storage', syncUserInfo)
 })
 
 const pageTitle = computed(() => {

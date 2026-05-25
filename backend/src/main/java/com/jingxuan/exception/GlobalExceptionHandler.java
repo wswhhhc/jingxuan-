@@ -4,7 +4,9 @@ import cn.hutool.core.util.StrUtil;
 import com.jingxuan.common.Result;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -122,6 +124,16 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleConstraintViolationException(SQLIntegrityConstraintViolationException e) {
         return Result.fail("数据关联冲突，操作被拒绝");
+    }
+
+    /**
+     * 数据库连接/查询超时
+     */
+    @ExceptionHandler({DataAccessResourceFailureException.class, QueryTimeoutException.class})
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Result<Void> handleDatabaseTimeoutException(Exception e, HttpServletRequest request) {
+        log.error("数据库访问异常 [{}] {}: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
+        return Result.error("数据库连接超时，请稍后重试");
     }
 
     /**

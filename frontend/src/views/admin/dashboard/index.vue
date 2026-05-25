@@ -95,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { init, use } from 'echarts/core'
 import { PieChart, BarChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
@@ -103,10 +103,12 @@ import { CanvasRenderer } from 'echarts/renderers'
 import type { ECharts } from 'echarts/core'
 import { getDashboardStats, getDashboardCharts } from '@/api/admin/dashboard'
 import type { DashboardStats, ChartData } from '@/api/admin/dashboard'
+import { useThemeStore } from '@/stores/theme'
 
 use([PieChart, BarChart, TooltipComponent, LegendComponent, GridComponent, CanvasRenderer])
 
 const loading = ref(false)
+const themeStore = useThemeStore()
 const recentWorks = ref<DashboardStats['recentWorks']>([])
 const statCards = ref<{ label: string; value: number | string }[]>([
   { label: '作品总数', value: 0 },
@@ -121,6 +123,7 @@ const scoreChartRef = ref<HTMLElement | null>(null)
 let techChart: ECharts | null = null
 let statusChart: ECharts | null = null
 let scoreChart: ECharts | null = null
+const latestChartData = ref<ChartData | null>(null)
 
 const statusType = (s: number) => {
   const map: Record<number, string> = { 1: 'warning', 3: 'success', 2: 'danger', 0: 'info' }
@@ -154,6 +157,7 @@ const loadCharts = async () => {
   try {
     const res = await getDashboardCharts()
     const data: ChartData = res.data
+    latestChartData.value = data
     await nextTick()
     renderTechChart(data.techStackDist || [])
     renderStatusChart(data.statusDist || {})
@@ -161,15 +165,67 @@ const loadCharts = async () => {
   } catch { /* ignore */ }
 }
 
+const readChartTokens = () => {
+  const style = getComputedStyle(document.documentElement)
+  return {
+    text: style.getPropertyValue('--text-primary').trim(),
+    textSecondary: style.getPropertyValue('--text-secondary').trim(),
+    textMuted: style.getPropertyValue('--text-muted').trim(),
+    border: style.getPropertyValue('--border-subtle').trim(),
+    brand: style.getPropertyValue('--brand').trim(),
+    accent: style.getPropertyValue('--accent').trim(),
+    success: style.getPropertyValue('--success').trim(),
+    warning: style.getPropertyValue('--warning').trim(),
+    danger: style.getPropertyValue('--danger').trim(),
+    info: style.getPropertyValue('--info').trim(),
+    surface: style.getPropertyValue('--card-bg').trim(),
+    surfaceStrong: style.getPropertyValue('--card-bg-strong').trim(),
+    chartGlow: style.getPropertyValue('--chart-glow').trim(),
+    paletteA: style.getPropertyValue('--chart-1').trim(),
+    paletteB: style.getPropertyValue('--chart-2').trim(),
+    paletteC: style.getPropertyValue('--chart-3').trim(),
+    paletteD: style.getPropertyValue('--chart-4').trim(),
+    paletteE: style.getPropertyValue('--chart-5').trim(),
+  }
+}
+
 const renderTechChart = (data: { name: string; value: number }[]) => {
   if (!techChartRef.value) return
   if (!techChart) techChart = init(techChartRef.value)
+  const tokens = readChartTokens()
   techChart.setOption({
-    tooltip: { trigger: 'item' },
+    color: [tokens.paletteA, tokens.paletteB, tokens.paletteC, tokens.paletteD, tokens.paletteE],
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: tokens.surfaceStrong,
+      borderColor: tokens.border,
+      textStyle: { color: tokens.text },
+    },
     series: [{
       type: 'pie',
-      radius: ['40%', '70%'],
-      label: { formatter: '{b}: {c}' },
+      radius: ['48%', '74%'],
+      center: ['50%', '54%'],
+      avoidLabelOverlap: true,
+      itemStyle: {
+        borderRadius: 10,
+        borderColor: tokens.surface,
+        borderWidth: 4,
+        shadowBlur: 24,
+        shadowColor: tokens.chartGlow,
+      },
+      label: {
+        formatter: '{b}\n{c} 项',
+        color: tokens.textSecondary,
+      },
+      labelLine: {
+        lineStyle: { color: tokens.border },
+        length: 14,
+        length2: 10,
+      },
+      emphasis: {
+        scale: true,
+        scaleSize: 8,
+      },
       data
     }]
   })
@@ -178,9 +234,16 @@ const renderTechChart = (data: { name: string; value: number }[]) => {
 const renderStatusChart = (data: Record<string, number>) => {
   if (!statusChartRef.value) return
   if (!statusChart) statusChart = init(statusChartRef.value)
+  const tokens = readChartTokens()
   const items = Object.entries(data || {}).map(([name, value]) => ({ name, value }))
   statusChart.setOption({
-    tooltip: { trigger: 'item' },
+    color: [tokens.warning, tokens.success, tokens.danger, tokens.info, tokens.accent],
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: tokens.surfaceStrong,
+      borderColor: tokens.border,
+      textStyle: { color: tokens.text },
+    },
     legend: {
       orient: 'vertical',
       right: 2,
@@ -189,15 +252,28 @@ const renderStatusChart = (data: Record<string, number>) => {
       itemHeight: 14,
       itemGap: 14,
       textStyle: {
-        color: 'var(--text-secondary)',
+        color: tokens.textSecondary,
         fontSize: 14
       }
     },
     series: [{
       type: 'pie',
-      center: ['38%', '56%'],
-      radius: '60%',
-      label: { formatter: '{b}: {c}' },
+      center: ['36%', '56%'],
+      radius: ['42%', '68%'],
+      itemStyle: {
+        borderRadius: 10,
+        borderColor: tokens.surface,
+        borderWidth: 4,
+        shadowBlur: 20,
+        shadowColor: tokens.chartGlow,
+      },
+      label: {
+        formatter: '{b}: {c}',
+        color: tokens.textSecondary,
+      },
+      labelLine: {
+        lineStyle: { color: tokens.border },
+      },
       data: items
     }]
   })
@@ -206,19 +282,65 @@ const renderStatusChart = (data: Record<string, number>) => {
 const renderScoreChart = (data: { name: string; value: number }[]) => {
   if (!scoreChartRef.value) return
   if (!scoreChart) scoreChart = init(scoreChartRef.value)
+  const tokens = readChartTokens()
   const scoreOrder = ['60以下', '60-69', '70-79', '80-89', '90-100']
   const sorted = scoreOrder.map(name => {
     const item = (data || []).find(d => d.name === name)
     return { name, value: item?.value || 0 }
   })
   scoreChart.setOption({
-    tooltip: {},
-    xAxis: { type: 'category', data: sorted.map(s => s.name) },
-    yAxis: { type: 'value', name: '作品数' },
+    color: [tokens.paletteA],
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow',
+        shadowStyle: {
+          color: tokens.chartGlow,
+        }
+      },
+      backgroundColor: tokens.surfaceStrong,
+      borderColor: tokens.border,
+      textStyle: { color: tokens.text },
+    },
+    grid: {
+      left: 24,
+      right: 16,
+      top: 28,
+      bottom: 24,
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'category',
+      data: sorted.map(s => s.name),
+      axisLine: { lineStyle: { color: tokens.border } },
+      axisTick: { show: false },
+      axisLabel: { color: tokens.textSecondary }
+    },
+    yAxis: {
+      type: 'value',
+      name: '作品数',
+      nameTextStyle: { color: tokens.textMuted },
+      splitLine: { lineStyle: { color: tokens.border, type: 'dashed' } },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: tokens.textSecondary }
+    },
     series: [{
       type: 'bar',
       data: sorted.map(s => s.value),
-      itemStyle: { color: '#409eff' }
+      barWidth: 26,
+      roundCap: true,
+      showBackground: true,
+      backgroundStyle: {
+        color: tokens.chartGlow,
+        borderRadius: [12, 12, 0, 0],
+      },
+      itemStyle: {
+        color: tokens.paletteA,
+        borderRadius: [12, 12, 0, 0],
+        shadowBlur: 18,
+        shadowColor: tokens.chartGlow,
+      }
     }]
   })
 }
@@ -234,6 +356,18 @@ onMounted(() => {
   loadCharts()
   window.addEventListener('resize', handleResize)
 })
+
+watch(
+  () => themeStore.mode,
+  async () => {
+    await nextTick()
+    const data = latestChartData.value
+    if (!data) return
+    renderTechChart(data.techStackDist || [])
+    renderStatusChart(data.statusDist || {})
+    renderScoreChart(data.scoreDist || [])
+  }
+)
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
@@ -256,11 +390,36 @@ onUnmounted(() => {
 }
 
 .chart-box {
+  position: relative;
   height: 300px;
+  margin-top: 10px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, var(--chart-glow), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 92%, transparent), color-mix(in srgb, var(--card-bg-strong) 96%, transparent));
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.chart-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 30%),
+    linear-gradient(0deg, transparent, rgba(255, 255, 255, 0.04));
+  pointer-events: none;
 }
 
 .chart-box--wide {
   height: 320px;
+}
+
+:global([data-theme="dark"]) .chart-box {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 36px rgba(0, 0, 0, 0.18);
 }
 
 .quick-actions {

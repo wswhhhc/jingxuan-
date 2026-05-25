@@ -58,6 +58,10 @@ export interface WorkItem {
   score?: number
   rank?: number
   previewUrl?: string
+  likeCount?: number
+  viewCount?: number
+  liked?: boolean
+  tags?: string[]
 }
 
 export interface WorkListParams {

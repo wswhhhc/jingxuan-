@@ -46,7 +46,21 @@
           </el-input>
         </el-form-item>
         <el-form-item>
-          <el-input v-model="query.techStack" placeholder="技术栈筛选" clearable @clear="search" @keyup.enter="search" />
+          <el-select
+            v-model="query.techStack"
+            placeholder="技术栈筛选"
+            clearable
+            filterable
+            @change="search"
+            @clear="search"
+          >
+            <el-option
+              v-for="tag in tags"
+              :key="tag.id"
+              :label="tag.name"
+              :value="tag.name"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item>
           <el-select v-model="query.classId" placeholder="班级筛选" clearable @change="search">
@@ -86,7 +100,7 @@
           @click="router.push(`/works/${item.id}`)"
         >
           <div class="work-card__cover">
-            <el-image :src="item.coverUrl || '/placeholder-cover.png'" fit="cover" class="cover-img">
+            <el-image :src="item.coverUrl || '/placeholder-cover.png'" fit="contain" class="cover-img">
               <template #error>
                 <div class="cover-placeholder">
                   <el-icon :size="36"><Picture /></el-icon>
@@ -103,18 +117,27 @@
             </div>
             <h3 class="work-card__title">{{ item.title }}</h3>
             <p class="work-card__summary">{{ item.summary || '暂无作品简介。' }}</p>
-            <div class="work-card__tags">
+            <div class="work-card__tags" v-if="item.tags?.length">
               <el-tag
-                v-for="tag in (item.techStack?.split(',').slice(0, 3) || [])"
+                v-for="tag in item.tags.slice(0, 4)"
                 :key="tag"
                 size="small"
                 effect="plain"
               >
-                {{ tag.trim() }}
+                {{ tag }}
               </el-tag>
             </div>
             <div class="work-card__footer">
-              <span>查看详情</span>
+              <div class="work-card__stats">
+                <span class="work-card__stat">
+                  <el-icon :size="14"><View /></el-icon>
+                  {{ item.viewCount ?? 0 }}
+                </span>
+                <span class="work-card__stat">
+                  <el-icon :size="14"><Star /></el-icon>
+                  {{ item.likeCount ?? 0 }}
+                </span>
+              </div>
               <span class="work-card__arrow">↗</span>
             </div>
           </div>
@@ -137,8 +160,8 @@
 <script setup lang="ts">
 import { computed, ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Picture } from '@element-plus/icons-vue'
-import { getPublicWorkList, getPublicClassList, type PublicWorkListParams, type PublicClassItem } from '../../api/public/work'
+import { Search, Picture, View, Star } from '@element-plus/icons-vue'
+import { getPublicWorkList, getPublicClassList, getPublicTagList, type PublicWorkListParams, type PublicClassItem, type TagItem } from '../../api/public/work'
 import type { WorkItem } from '../../api/student/work'
 
 const router = useRouter()
@@ -148,6 +171,7 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(12)
 const classes = ref<PublicClassItem[]>([])
+const tags = ref<TagItem[]>([])
 const submitTimeRange = ref<[string, string] | null>(null)
 
 const query = reactive<PublicWorkListParams>({
@@ -155,7 +179,7 @@ const query = reactive<PublicWorkListParams>({
   techStack: '',
 })
 
-const featuredCount = computed(() => list.value.filter(item => !!item.featured).length)
+const featuredCount = computed(() => list.value.filter((item: any) => !!item.featured).length)
 
 function search() {
   page.value = 1
@@ -215,8 +239,18 @@ async function loadClasses() {
   }
 }
 
+async function loadTags() {
+  try {
+    const res = await getPublicTagList()
+    tags.value = res.data || []
+  } catch {
+    tags.value = []
+  }
+}
+
 onMounted(() => {
   loadClasses()
+  loadTags()
   loadList()
 })
 </script>
@@ -278,17 +312,24 @@ onMounted(() => {
   position: relative;
   aspect-ratio: 1.18 / 1;
   overflow: hidden;
-  background: color-mix(in srgb, var(--page-bg-alt) 86%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--brand-soft) 70%, transparent), transparent 42%),
+    color-mix(in srgb, var(--page-bg-alt) 86%, transparent);
 }
 
 .cover-img {
   width: 100%;
   height: 100%;
+  object-fit: contain;
   transition: transform var(--transition-slow);
 }
 
 .work-card:hover .cover-img {
-  transform: scale(1.04);
+  transform: scale(1.02);
 }
 
 .cover-placeholder {
@@ -344,13 +385,25 @@ onMounted(() => {
 .work-card__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .work-card__footer {
   margin-top: auto;
   padding-top: 6px;
   border-top: 1px solid var(--border-subtle);
+}
+
+.work-card__stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.work-card__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .work-card__arrow {

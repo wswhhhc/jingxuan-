@@ -26,7 +26,11 @@
 
     <section class="workspace-section reveal-up reveal-delay-1">
       <el-table :data="list" v-loading="loading" stripe>
-        <el-table-column prop="id" label="编号" width="60" />
+        <el-table-column label="编号" width="68">
+          <template #default="{ $index }">
+            {{ getRowIndex($index) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="username" label="操作人" width="120" />
         <el-table-column prop="action" label="操作类型" width="100" />
         <el-table-column prop="target" label="操作对象" width="120" show-overflow-tooltip />
@@ -89,6 +93,8 @@ const loadList = async () => {
     loading.value = false
   }
 }
+
+const getRowIndex = (index: number) => (page.value - 1) * size.value + index + 1
 
 onMounted(loadList)
 </script>

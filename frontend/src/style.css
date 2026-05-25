@@ -21,6 +21,12 @@
   --warning: #b57c2f;
   --danger: #b24646;
   --info: #5a748d;
+  --chart-1: #7f2436;
+  --chart-2: #b57c2f;
+  --chart-3: #2f7e64;
+  --chart-4: #5a748d;
+  --chart-5: #b88a5b;
+  --chart-glow: rgba(127, 36, 54, 0.12);
   --shadow-sm: 0 12px 24px rgba(57, 37, 24, 0.06);
   --shadow-md: 0 18px 44px rgba(57, 37, 24, 0.1);
   --shadow-lg: 0 28px 80px rgba(42, 28, 20, 0.16);
@@ -96,6 +102,12 @@
   --warning: #d1a15f;
   --danger: #d76f73;
   --info: #7fa6c9;
+  --chart-1: #d79e77;
+  --chart-2: #8fb7d8;
+  --chart-3: #7fd0b2;
+  --chart-4: #d9b06e;
+  --chart-5: #c88aa0;
+  --chart-glow: rgba(215, 158, 119, 0.16);
   --shadow-sm: 0 18px 36px rgba(0, 0, 0, 0.22);
   --shadow-md: 0 28px 56px rgba(0, 0, 0, 0.32);
   --shadow-lg: 0 42px 100px rgba(0, 0, 0, 0.42);

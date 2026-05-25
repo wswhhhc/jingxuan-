@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     /** 不需要认证的路径模式 */
     private final List<String> ignoredPaths;
@@ -34,10 +35,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider,
                                     CustomUserDetailsService customUserDetailsService,
+                                    TokenBlacklistService tokenBlacklistService,
                                     @org.springframework.beans.factory.annotation.Value("#{'${ignored.paths}'.split(',')}")
                                     List<String> ignoredPaths) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.customUserDetailsService = customUserDetailsService;
+        this.tokenBlacklistService = tokenBlacklistService;
         this.ignoredPaths = ignoredPaths.stream()
                 .map(String::trim)
                 .toList();
@@ -56,7 +59,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = extractToken(request);
 
         if (StringUtils.hasText(token)) {
-            if (jwtTokenProvider.validateToken(token)) {
+            if (tokenBlacklistService.isBlacklisted(token)) {
+                log.debug("Token 已加入黑名单，访问路径: {}", request.getRequestURI());
+            } else if (jwtTokenProvider.validateToken(token)) {
                 String username = jwtTokenProvider.getUsernameFromToken(token);
                 var userDetails = customUserDetailsService.loadUserByUsername(username);
 

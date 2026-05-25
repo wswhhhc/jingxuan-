@@ -58,9 +58,6 @@
           </el-menu-item>
         </el-menu>
 
-        <div class="workspace-layout__section-note">
-          后台沿用公共品牌的纸面与展墙质感，但优先确保筛选、表格和弹窗在高频操作下足够稳。
-        </div>
       </aside>
 
       <div class="workspace-layout__main">
@@ -79,6 +76,9 @@
             <AppThemeToggle />
             <el-dropdown trigger="click">
               <span class="workspace-layout__user">
+                <el-avatar :size="34" :src="userInfo?.avatar || undefined">
+                  {{ avatarFallback }}
+                </el-avatar>
                 <span>{{ userInfo?.realName || '管理员' }}</span>
                 <el-icon><ArrowDown /></el-icon>
               </span>
@@ -110,12 +110,25 @@ import {
 import request from '../api/request'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 
+function getCachedUserInfo() {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
 const route = useRoute()
 const router = useRouter()
-const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || '{}'))
+const userInfo = ref(getCachedUserInfo())
 const unreadCount = ref(0)
 let unreadTimer: ReturnType<typeof setInterval> | null = null
 const hasUnread = computed(() => unreadCount.value > 0)
+const avatarFallback = computed(() => userInfo.value?.realName?.charAt?.(0) || '管')
+const syncUserInfo = () => {
+  userInfo.value = getCachedUserInfo()
+}
 
 const descriptions: Record<string, string> = {
   '/admin/dashboard': '用更强的层次和图表节奏总览平台状态。',
@@ -142,14 +155,19 @@ const fetchUnread = async () => {
 }
 
 onMounted(() => {
+  syncUserInfo()
   fetchUnread()
   unreadTimer = setInterval(fetchUnread, 30000)
   window.addEventListener('admin-notify-changed', fetchUnread)
+  window.addEventListener('focus', syncUserInfo)
+  window.addEventListener('storage', syncUserInfo)
 })
 
 onUnmounted(() => {
   if (unreadTimer) clearInterval(unreadTimer)
   window.removeEventListener('admin-notify-changed', fetchUnread)
+  window.removeEventListener('focus', syncUserInfo)
+  window.removeEventListener('storage', syncUserInfo)
 })
 
 const pageTitle = computed(() => {

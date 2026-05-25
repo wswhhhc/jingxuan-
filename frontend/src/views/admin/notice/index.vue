@@ -189,6 +189,37 @@ onMounted(loadList)
   padding-inline: 14px;
 }
 
+.notice-page :deep(.el-table) {
+  --el-table-tr-bg-color: color-mix(in srgb, var(--card-bg) 92%, transparent);
+  --el-fill-color-lighter: color-mix(in srgb, var(--card-bg) 88%, transparent);
+}
+
+.notice-page :deep(.el-table tr) {
+  background-color: var(--el-table-tr-bg-color);
+}
+
+.notice-page :deep(.el-table__row--striped td.el-table__cell) {
+  background: color-mix(in srgb, var(--brand-soft) 28%, var(--card-bg));
+}
+
+.notice-page :deep(.el-table__body tr:hover > td.el-table__cell) {
+  background: color-mix(in srgb, var(--brand-soft) 44%, var(--card-bg)) !important;
+}
+
+:global([data-theme="dark"]) .notice-page :deep(.el-table) {
+  --el-table-tr-bg-color: color-mix(in srgb, var(--card-bg) 96%, #16202b);
+  --el-fill-color-lighter: color-mix(in srgb, var(--card-bg) 93%, #1a2531);
+}
+
+:global([data-theme="dark"]) .notice-page :deep(.el-table__row--striped td.el-table__cell) {
+  background: color-mix(in srgb, var(--card-bg) 86%, rgba(255, 255, 255, 0.03));
+}
+
+:global([data-theme="dark"]) .notice-page :deep(.el-table td.el-table__cell),
+:global([data-theme="dark"]) .notice-page :deep(.el-table th.el-table__cell) {
+  border-bottom-color: color-mix(in srgb, var(--border-subtle) 92%, transparent);
+}
+
 .text-muted { color: var(--text-muted); font-size: 13px; }
 .notice-content { white-space: pre-wrap; line-height: 1.8; }
 </style>
