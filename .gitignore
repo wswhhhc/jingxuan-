@@ -12,3 +12,7 @@ docs/findings.md
 docs/task_plan.md
 docs/修复规划路线.md
 docs/接口测试简报-*.md
+outputs/
+tmp/
+tmp_doc_work/
+tmp_perf_render/

@@ -1,60 +1,43 @@
 <template>
   <div class="workspace-layout admin-layout">
-    <div class="workspace-layout__frame">
-      <aside class="workspace-layout__sidebar">
+    <div class="workspace-layout__frame" :class="{ 'workspace-layout__frame--collapsed': isSidebarCollapsed }">
+      <aside class="workspace-layout__sidebar" :class="{ 'workspace-layout__sidebar--collapsed': isSidebarCollapsed }">
+        <el-tooltip :content="isSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'" placement="right">
+          <el-button
+            circle
+            class="workspace-layout__collapse-toggle"
+            @click="isSidebarCollapsed = !isSidebarCollapsed"
+          >
+            <el-icon :size="16">
+              <Expand v-if="isSidebarCollapsed" />
+              <Fold v-else />
+            </el-icon>
+          </el-button>
+        </el-tooltip>
+
         <div class="workspace-layout__brand">
-          <span class="workspace-layout__brand-note">Control Archive</span>
-          <span class="workspace-layout__brand-title">管理后台</span>
+          <span v-show="!isSidebarCollapsed" class="workspace-layout__brand-note">Control Archive</span>
+          <span v-show="!isSidebarCollapsed" class="workspace-layout__brand-title">管理后台</span>
         </div>
 
-        <el-menu :default-active="route.path" router class="workspace-layout__menu">
-          <el-menu-item index="/admin/dashboard">
-            <el-icon><Odometer /></el-icon>
-            <span>控制台</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/audit">
-            <el-icon><Finished /></el-icon>
-            <span>审核管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/notice">
-            <el-icon><Notification /></el-icon>
-            <span>公告管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/comment">
-            <el-icon><ChatDotRound /></el-icon>
-            <span>评论管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/rules">
-            <el-icon><Setting /></el-icon>
-            <span>审核规则</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/port">
-            <el-icon><Connection /></el-icon>
-            <span>端口管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/prize">
-            <el-icon><TrophyBase /></el-icon>
-            <span>奖品配置</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/score-batch">
-            <el-icon><Timer /></el-icon>
-            <span>评分批次</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/roles">
-            <el-icon><Key /></el-icon>
-            <span>角色权限</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/users">
-            <el-icon><User /></el-icon>
-            <span>用户管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/log">
-            <el-icon><Document /></el-icon>
-            <span>操作日志</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/dict">
-            <el-icon><List /></el-icon>
-            <span>数据字典</span>
+        <el-menu
+          :default-active="route.path"
+          :collapse="isSidebarCollapsed"
+          :collapse-transition="false"
+          router
+          class="workspace-layout__menu"
+        >
+          <el-menu-item v-for="item in adminMenuItems" :key="item.index" :index="item.index">
+            <el-tooltip
+              :content="item.label"
+              :disabled="!isSidebarCollapsed"
+              placement="right"
+            >
+              <div class="workspace-layout__menu-item">
+                <el-icon><component :is="item.icon" /></el-icon>
+                <span v-show="!isSidebarCollapsed">{{ item.label }}</span>
+              </div>
+            </el-tooltip>
           </el-menu-item>
         </el-menu>
 
@@ -105,7 +88,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Odometer, Finished, Notification, Setting,
-  Connection, TrophyBase, Timer, Key, Bell, ArrowDown, User, Document, List, ChatDotRound
+  Connection, TrophyBase, Timer, Key, Bell, ArrowDown, User, Document, List, ChatDotRound, Fold, Expand
 } from '@element-plus/icons-vue'
 import request from '../api/request'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
@@ -121,6 +104,7 @@ function getCachedUserInfo() {
 
 const route = useRoute()
 const router = useRouter()
+const isSidebarCollapsed = ref(false)
 const userInfo = ref(getCachedUserInfo())
 const unreadCount = ref(0)
 let unreadTimer: ReturnType<typeof setInterval> | null = null
@@ -144,6 +128,21 @@ const descriptions: Record<string, string> = {
   '/admin/log': '查看系统操作脉络，保留审计线索。',
   '/admin/dict': '维护字典数据，让配置与内容彼此一致。',
 }
+
+const adminMenuItems = [
+  { index: '/admin/dashboard', label: '控制台', icon: Odometer },
+  { index: '/admin/audit', label: '审核管理', icon: Finished },
+  { index: '/admin/notice', label: '公告管理', icon: Notification },
+  { index: '/admin/comment', label: '评论管理', icon: ChatDotRound },
+  { index: '/admin/rules', label: '审核规则', icon: Setting },
+  { index: '/admin/port', label: '端口管理', icon: Connection },
+  { index: '/admin/prize', label: '奖品配置', icon: TrophyBase },
+  { index: '/admin/score-batch', label: '评分批次', icon: Timer },
+  { index: '/admin/roles', label: '角色权限', icon: Key },
+  { index: '/admin/users', label: '用户管理', icon: User },
+  { index: '/admin/log', label: '操作日志', icon: Document },
+  { index: '/admin/dict', label: '数据字典', icon: List },
+]
 
 const fetchUnread = async () => {
   try {

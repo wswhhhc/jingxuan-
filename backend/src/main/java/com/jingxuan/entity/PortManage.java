@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public class PortManage extends BaseEntity {
 
     private Integer portNumber;
+    private String portType;
     private Integer status;
     private Long workId;
     private LocalDateTime allocatedTime;

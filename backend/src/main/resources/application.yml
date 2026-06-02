@@ -38,7 +38,7 @@ mybatis-plus:
 
 # Spring Security 忽略路径（无需认证）
 ignored:
-  paths: /auth/login,/api/auth/login,/auth/register,/swagger-ui/**,/v3/api-docs/**,/doc.html,/webjars/**,/favicon.ico,/uploads/**,/public/**,/comment/list/**
+  paths: /auth/login,/api/auth/login,/auth/register,/swagger-ui/**,/v3/api-docs/**,/doc.html,/webjars/**,/favicon.ico,/uploads/**,/public/**,/comment/list/**,/api/runtime/*/start,/api/runtime/*/status,/api/runtime/*/heartbeat,/api/runtime/*/stop
 
 # JWT 配置
 jwt:

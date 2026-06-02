@@ -69,7 +69,11 @@ export function resolveAuthRedirect(to: {
 
 router.beforeEach((to, _from, next) => {
   const redirect = resolveAuthRedirect(to)
-  next(redirect)
+  if (redirect) {
+    next(redirect)
+    return
+  }
+  next()
 })
 
 export default router

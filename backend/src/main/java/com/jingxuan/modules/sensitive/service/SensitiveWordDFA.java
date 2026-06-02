@@ -164,7 +164,7 @@ public class SensitiveWordDFA {
                 "一夜情",
                 "援交", "包养",
                 "av", "三级片", "毛片", "a片",
-                "porn", "xxx"
+                "porn"
         ));
 
         // ── 3. 暴力血腥 ──

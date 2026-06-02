@@ -66,6 +66,7 @@ public class FileUtil {
         return mimeType.startsWith("image/")
                 || mimeType.startsWith("video/")
                 || "application/zip".equals(mimeType)
+                || "application/octet-stream".equals(mimeType)
                 || "application/x-zip-compressed".equals(mimeType)
                 || "application/x-rar-compressed".equals(mimeType)
                 || "application/vnd.rar".equals(mimeType)

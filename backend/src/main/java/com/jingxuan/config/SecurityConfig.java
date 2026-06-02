@@ -1,6 +1,7 @@
 package com.jingxuan.config;
 
 import com.jingxuan.security.JwtAuthenticationFilter;
+import com.jingxuan.security.PublicRateLimitFilter;
 import com.jingxuan.security.RestAccessDeniedHandler;
 import com.jingxuan.security.RestAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
@@ -52,13 +53,18 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                     // 前台公开展示接口
                     .requestMatchers("/public/**").permitAll()
+                    // 在线体验运行接口
+                    .requestMatchers(HttpMethod.POST, "/api/runtime/*/start").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/runtime/*/status").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/runtime/*/heartbeat").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/runtime/*/stop").permitAll()
                     // 公共评论列表
                     .requestMatchers(HttpMethod.GET, "/comment/list/**").permitAll()
                     // 其它接口需认证
                     .anyRequest().authenticated()
             )
-            .addFilterBefore(publicRateLimitFilter, JwtAuthenticationFilter.class)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(publicRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

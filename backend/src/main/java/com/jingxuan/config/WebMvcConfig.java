@@ -1,15 +1,22 @@
 package com.jingxuan.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Web MVC 配置 — CORS、静态资源映射
  */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
+
+    @Value("${jingxuan.upload.path:./uploads}")
+    private String uploadPath;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -23,7 +30,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        Path absoluteUploadPath = Paths.get(uploadPath).toAbsolutePath().normalize();
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:./uploads/");
+                .addResourceLocations(absoluteUploadPath.toUri().toString());
     }
 }

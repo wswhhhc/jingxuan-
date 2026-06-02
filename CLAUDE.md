@@ -27,8 +27,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 前端日志：`console.log('[DEBUG] ...')` 浏览器 F12 查看
 - API 文档：`http://localhost:8080/doc.html`（Knife4j）
 
+### 测试
+- **后端测试**：`mvn test`（H2 内存数据库 + `@ActiveProfiles("test")`，不依赖 MySQL/Redis）
+- **后端运行单测类**：`mvn test -Dtest=StudentApiTest`（Maven Surefire 匹配 `**/*Test.java`）
+- **前端测试**：`npm run test`（Vitest + jsdom + Vue Test Utils）
+- **前端 watch 模式**：`npm run test:watch`
+
 ### 安全注意
 - `.env` 文件含 DeepSeek API Key，**严禁提交到 Git**（已在 `.gitignore` 中）
+- `application-prod.yml` 含数据库密码（`${DB_PASSWORD}` 从环境变量读），注意权限
 
 ## 数据库
 
@@ -84,6 +91,12 @@ throw new BusinessException(400, "错误信息");   // → 自定义 code
 |---|---|
 | `config/` | 6 个配置类：SecurityConfig / JacksonConfig / MyBatisPlusConfig / Knife4jConfig / DeepSeekConfig / WebMvcConfig |
 | `security/` | JWT 认证链：JwtTokenProvider / JwtAuthenticationFilter / SecurityUtils / CustomUserDetailsService + 异常处理器 |
+
+### 配置文件名约定
+- `application.yml` — 公共配置（数据源模板、JWT、DeepSeek fallback=reject、上传路径、ignored.paths）
+- `application-dev.yml` — 开发环境（MySQL 连接、Redis、DeepSeek fallback=bypass、debug 日志）
+- `application-test.yml` — 测试环境（H2 内存数据库、Redis 降级、DeepSeek bypass）
+- `application-prod.yml` — 生产环境（MySQL + Redis 连接、info 日志；**不提交 Git**，密码从环境变量 `${DB_PASSWORD}` 读）
 
 ### 业务模块 (modules/)
 | 模块 | 说明 |
@@ -161,6 +174,21 @@ MyBatis-Plus `ASSIGN_ID`（雪花算法）生成 19 位数字，超出 JS `Numbe
 - **内容审核**：提交时调用 DeepSeek 审核标题/简介/运行说明，`deepseek.fallback` 控制失败策略（`bypass`=放行, `reject`=拦截, `warning`=仅警告）
 - **DeepSeek fallback** 在 `application-dev.yml` 默认 `bypass`（开发环境），`application.yml` 默认为 `reject`（生产）
 
+## 测试基础设施
+
+### 后端测试（H2 + SpringBootTest）
+- 基类 `BaseApiTest` 启动完整 Spring 上下文 + H2 内存数据库（MySQL 兼容模式），通过 `TestRestTemplate` 发 HTTP 请求
+- `BaseServiceTest` 纯 Mockito 单元测试，不加载 Spring 上下文
+- `ApiClient` 工具类封装了 `get/post/put/delete` + `ApiResponse` 的 `assertOk()`/`getData()` 链式断言
+- 预置 5 个带 token 的 `ApiClient`：`adminApi` / `teacherApi` / `studentApi` / `testStuApi` / `publicApi`
+- 测试资源：`src/test/resources/sql/test-schema.sql`（建表）、`test-data.sql`（种子数据）、`cleanup.sql`（清理）
+- profile：`application-test.yml`（H2 + Redis 降级 + DeepSeek bypass）
+
+### 前端测试（Vitest + jsdom + @vue/test-utils）
+- 测试文件命名：`*.test.ts`，放在 `__tests__/` 目录下与被测文件相邻
+- Mock 模式：API 调用在 `vi.mock()` 中 mock，组件通过 `mount()` / `shallowMount()` 测试
+- Element Plus 组件需在 `mount()` 中全局注册（`global.plugins`）避免渲染报错
+
 ## 前端架构 (Vue 3 + TypeScript + Element Plus + Pinia)
 
 ### 目录结构
@@ -191,6 +219,13 @@ src/
     work/                         — 作品相关复用组件
   mock/                           — 本地 mock 数据
 ```
+
+路径别名：`@` → `src/`（vite.config.ts 中 resolve.alias 配置）
+
+### Vite 构建优化
+- `unplugin-auto-import` + `unplugin-vue-components`：Element Plus 按需导入（样式 CSS），无需手动 `import`
+- `vite-plugin-compression`：gzip 预压缩（阈值 10KB），部署环境需开启静态 `.gz` 优先服务
+- `rollupOptions.output.manualChunks`：Vue 生态 → `vendor-vue`，Element Plus → `vendor-element`，ECharts → `vendor-echarts`
 
 ### ★ 前端数据适配层
 
@@ -225,3 +260,4 @@ src/
 - `nginx-preview.conf` — 精选作品反向代理配置
 - `测试计划.md` — 软件测试策略与用例计划
 - `缺陷报告.md` — 测试缺陷跟踪
+- `scripts/` 目录含 Python 文档生成脚本（测试用例生成、测试计划文档自动生成等辅助工具）

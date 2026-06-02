@@ -22,7 +22,7 @@
             <el-tag v-if="work.featured" type="warning" effect="dark">精选作品</el-tag>
             <el-tag v-if="work.score !== undefined" type="success" effect="plain">评分：{{ work.score }} 分</el-tag>
             <el-tag v-if="work.rank" type="danger" effect="plain">排名：第 {{ work.rank }} 名</el-tag>
-            <el-button v-if="work.previewUrl" type="primary" @click="openPreview">在线体验</el-button>
+            <el-button v-if="work.publishStatus === 'published' || work.previewUrl" type="primary" :loading="runtimeLoading" @click="openPreview">在线体验</el-button>
           </div>
           <div class="detail-hero__stats">
             <span class="detail-stat" @click="handleLike">
@@ -203,6 +203,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture, Files, StarFilled, View } from '@element-plus/icons-vue'
 import { getPublicWorkDetail, toggleLike } from '../../api/public/work'
+import { startRuntime } from '../../api/runtime'
 import { getCommentList, addComment, deleteComment } from '../../api/public/comment'
 import type { CommentItem } from '../../api/public/comment'
 import type { UserInfo } from '../../api/student/auth'
@@ -210,9 +211,7 @@ import type { WorkItem } from '../../api/student/work'
 import CommentThread from './CommentThread.vue'
 
 function openPreview() {
-  if (work.value?.previewUrl) {
-    window.open(work.value.previewUrl, '_blank')
-  }
+  handleStartPreview()
 }
 
 const route = useRoute()
@@ -231,6 +230,7 @@ const currentUser = ref<UserInfo | null>(getCachedUserInfo())
 const liked = ref(false)
 const likeCount = ref(0)
 const viewCount = ref(0)
+const runtimeLoading = ref(false)
 
 const techTags = computed(() => work.value?.techStack?.split(',').map((t) => t.trim()).filter(Boolean) || [])
 const isLoggedIn = ref(hasLoginToken())
@@ -270,6 +270,19 @@ function goToLogin() {
 function getRouteWorkId() {
   const id = route.params.id
   return typeof id === 'string' ? id : Array.isArray(id) ? id[0] : ''
+}
+
+async function handleStartPreview() {
+  if (!work.value) return
+  runtimeLoading.value = true
+  try {
+    await startRuntime(getRouteWorkId())
+    router.push(`/preview/${getRouteWorkId()}`)
+  } catch (error: any) {
+    ElMessage.error(error?.message || 'Failed to start runtime preview')
+  } finally {
+    runtimeLoading.value = false
+  }
 }
 
 async function loadDetail() {
