@@ -1,7 +1,5 @@
 package com.jingxuan.modules.adapter;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jingxuan.common.PageResult;
 import com.jingxuan.common.Result;
@@ -12,17 +10,6 @@ import com.jingxuan.entity.SysDict;
 import com.jingxuan.entity.SysLog;
 import com.jingxuan.entity.SysNotice;
 import com.jingxuan.entity.SysNotification;
-import com.jingxuan.entity.SysUser;
-import com.jingxuan.entity.Work;
-import com.jingxuan.entity.WorkPublish;
-import com.jingxuan.entity.WorkTag;
-import com.jingxuan.mapper.SysUserMapper;
-import com.jingxuan.mapper.TagMapper;
-import com.jingxuan.mapper.WorkAuditMapper;
-import com.jingxuan.mapper.WorkMapper;
-import com.jingxuan.mapper.WorkPublishMapper;
-import com.jingxuan.mapper.WorkTagMapper;
-import com.jingxuan.modules.prize.service.RewardIssueService;
 import com.jingxuan.modules.audit.dto.AuditHistoryVO;
 import com.jingxuan.modules.audit.dto.AuditRequest;
 import com.jingxuan.modules.audit.service.AuditService;
@@ -32,13 +19,12 @@ import com.jingxuan.modules.dict.service.DictService;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.notice.dto.NoticeRequest;
 import com.jingxuan.modules.notice.service.NoticeService;
-import com.jingxuan.modules.publish.dto.FeaturedRequest;
 import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.prize.service.PrizeService;
+import com.jingxuan.modules.prize.service.RewardIssueService;
+import com.jingxuan.modules.publish.dto.FeaturedRequest;
 import com.jingxuan.modules.publish.service.PublishService;
 import com.jingxuan.modules.score.dto.AdminScoreDetailVO;
-import com.jingxuan.modules.score.dto.ScoreVO;
-import com.jingxuan.modules.score.service.ScoreService;
 import com.jingxuan.modules.scorebatch.service.ScoreBatchService;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
 import com.jingxuan.modules.work.dto.WorkListVO;
@@ -49,7 +35,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -60,26 +45,21 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @RestController
 @RequiredArgsConstructor
 @Tag(name = "管理端 API")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminApiController {
 
+    private final AdminDashboardFacade adminDashboardFacade;
+    private final AdminScoreFacade adminScoreFacade;
+    private final AdminTagFacade adminTagFacade;
     private final WorkService workService;
     private final CommentService commentService;
-    private final WorkPublishMapper workPublishMapper;
-    private final WorkMapper workMapper;
-    private final WorkAuditMapper workAuditMapper;
-    private final SysUserMapper sysUserMapper;
     private final AuditService auditService;
     private final PublishService publishService;
     private final NoticeService noticeService;
@@ -88,69 +68,14 @@ public class AdminApiController {
     private final ScoreBatchService scoreBatchService;
     private final PrizeService prizeService;
     private final RewardIssueService rewardIssueService;
-    private final ScoreService scoreService;
     private final NotificationService notificationService;
-    private final TagMapper tagMapper;
-    private final WorkTagMapper workTagMapper;
 
     // ==================== Dashboard ====================
 
     @GetMapping("/admin/dashboard/stats")
     @Operation(summary = "获取仪表盘统计数据")
     public Result<Map<String, Object>> getDashboardStats() {
-        Map<String, Object> map = new HashMap<>();
-
-        // 作品总数
-        Long totalWorks = workMapper.selectCount(null);
-        map.put("totalWorks", totalWorks);
-
-        // 待审核（status = 1）
-        Long pendingAudit = workMapper.selectCount(
-                new LambdaQueryWrapper<Work>().eq(Work::getStatus, 1));
-        map.put("pendingAudit", pendingAudit);
-
-        // 已发布作品
-        Long publishedWorks = workPublishMapper.selectCount(
-                new LambdaQueryWrapper<WorkPublish>().eq(WorkPublish::getPublishStatus, 1));
-        map.put("publishedWorks", publishedWorks);
-
-        // 教师总数（role_id = 2）
-        Long totalTeachers = sysUserMapper.selectCount(
-                new LambdaQueryWrapper<SysUser>().eq(SysUser::getRoleId, 2));
-        map.put("totalTeachers", totalTeachers);
-
-        // 学生总数（role_id = 1）
-        Long totalStudents = sysUserMapper.selectCount(
-                new LambdaQueryWrapper<SysUser>().eq(SysUser::getRoleId, 1));
-        map.put("totalStudents", totalStudents);
-
-        // 进行中的批次
-        List<ScoreBatch> batches = scoreBatchService.list();
-        long activeBatches = batches.stream().filter(b -> b.getStatus() != null && b.getStatus() == 1).count();
-        map.put("activeBatches", activeBatches);
-
-        // 最近提交的 5 个作品（补全 submitterName）
-        Page<Work> recentPage = new Page<>(1, 5);
-        LambdaQueryWrapper<Work> recentWrapper = new LambdaQueryWrapper<Work>()
-                .orderByDesc(Work::getSubmitTime);
-        workMapper.selectPage(recentPage, recentWrapper);
-        List<Map<String, Object>> recentWorks = recentPage.getRecords().stream().map(w -> {
-            Map<String, Object> item = new HashMap<>();
-            item.put("id", w.getId());
-            item.put("title", w.getTitle());
-            item.put("techStack", w.getTechStack());
-            item.put("status", w.getStatus());
-            item.put("submitTime", w.getSubmitTime());
-            SysUser user = sysUserMapper.selectById(w.getSubmitterId());
-            item.put("submitterName", user != null ? user.getRealName() : null);
-            return item;
-        }).collect(java.util.stream.Collectors.toList());
-        map.put("recentWorks", recentWorks);
-
-        // 评分分布（占位）
-        map.put("scoreDistribution", List.of());
-
-        return Result.ok(map);
+        return Result.ok(adminDashboardFacade.getStats());
     }
 
     // ==================== Audit ====================
@@ -497,37 +422,7 @@ public class AdminApiController {
     @GetMapping("/admin/score/batch/{batchId}")
     @Operation(summary = "获取评分批次评分明细（含各教师评分）")
     public Result<List<AdminScoreDetailVO>> getBatchScoreDetail(@PathVariable Long batchId) {
-        // 查询该批次下所有已通过的作品
-        List<Work> works = workMapper.selectList(
-                new LambdaQueryWrapper<Work>()
-                        .eq(Work::getBatchId, batchId)
-                        .eq(Work::getStatus, 3));
-        List<AdminScoreDetailVO> result = new ArrayList<>();
-        for (Work work : works) {
-            AdminScoreDetailVO detail = new AdminScoreDetailVO();
-            detail.setWorkId(work.getId());
-            detail.setWorkTitle(work.getTitle());
-            SysUser user = sysUserMapper.selectById(work.getSubmitterId());
-            detail.setSubmitterName(user != null ? user.getRealName() : null);
-
-            // 各教师评分
-            List<ScoreVO> scores = scoreService.getWorkScores(work.getId());
-            List<AdminScoreDetailVO.TeacherScoreItem> items = new ArrayList<>();
-            for (ScoreVO s : scores) {
-                AdminScoreDetailVO.TeacherScoreItem item = new AdminScoreDetailVO.TeacherScoreItem();
-                item.setTeacherName(s.getTeacherName());
-                item.setInnovation(s.getInnovation());
-                item.setDifficulty(s.getDifficulty());
-                item.setCompletion(s.getCompletion());
-                item.setPracticality(s.getPracticality());
-                item.setTotal(s.getTotal());
-                item.setComment(s.getComment());
-                items.add(item);
-            }
-            detail.setScores(items);
-            result.add(detail);
-        }
-        return Result.ok(result);
+        return Result.ok(adminScoreFacade.getBatchScoreDetail(batchId));
     }
 
     // ==================== Chart Data ====================
@@ -535,59 +430,7 @@ public class AdminApiController {
     @GetMapping("/admin/dashboard/charts")
     @Operation(summary = "获取仪表盘图表数据")
     public Result<Map<String, Object>> getChartData() {
-        Map<String, Object> data = new HashMap<>();
-
-        // 作品按技术栈分布
-        Map<String, Long> techCount = new HashMap<>();
-        for (Work w : workMapper.selectList(null)) {
-            if (w.getTechStack() != null && !w.getTechStack().isEmpty()) {
-                for (String tech : w.getTechStack().split(",")) {
-                    String t = tech.trim();
-                    if (!t.isEmpty()) {
-                        techCount.merge(t, 1L, Long::sum);
-                    }
-                }
-            }
-        }
-        List<Map<String, Object>> techStackDist = new ArrayList<>();
-        for (Map.Entry<String, Long> e : techCount.entrySet()) {
-            Map<String, Object> item = new HashMap<>();
-            item.put("name", e.getKey());
-            item.put("value", e.getValue());
-            techStackDist.add(item);
-        }
-        data.put("techStackDist", techStackDist);
-
-        // 作品按审核状态分布
-        Map<String, Long> statusDist = new LinkedHashMap<>();
-        statusDist.put("草稿", 0L);
-        statusDist.put("已提交", 0L);
-        statusDist.put("已驳回", 0L);
-        statusDist.put("已通过", 0L);
-        statusDist.put("其他", 0L);
-        for (Work w : workMapper.selectList(null)) {
-            Integer s = w.getStatus();
-            String key;
-            if (s == null) key = "其他";
-            else switch (s) {
-                case 0: key = "草稿"; break;
-                case 1: key = "已提交"; break;
-                case 2: key = "已驳回"; break;
-                case 3: key = "已通过"; break;
-                default: key = "其他"; break;
-            }
-            statusDist.merge(key, 1L, Long::sum);
-        }
-        data.put("statusDist", statusDist);
-
-        // 评分分布
-        try {
-            data.put("scoreDist", workMapper.selectScoreDistribution());
-        } catch (Exception e) {
-            data.put("scoreDist", List.of());
-        }
-
-        return Result.ok(data);
+        return Result.ok(adminDashboardFacade.getChartData());
     }
 
     // ==================== Tag Management ====================
@@ -595,34 +438,27 @@ public class AdminApiController {
     @GetMapping("/admin/tags")
     @Operation(summary = "获取标签列表")
     public Result<List<com.jingxuan.entity.Tag>> listTags(@RequestParam(required = false) String type) {
-        return Result.ok(tagMapper.selectList(
-                Wrappers.<com.jingxuan.entity.Tag>lambdaQuery()
-                        .eq(com.jingxuan.entity.Tag::getDeleted, 0)
-                        .eq(type != null && !type.isBlank(), com.jingxuan.entity.Tag::getType, type)
-                        .orderByAsc(com.jingxuan.entity.Tag::getSort)));
+        return Result.ok(adminTagFacade.listTags(type));
     }
 
     @PostMapping("/admin/tags")
     @Operation(summary = "创建标签")
     public Result<Void> createTag(@Valid @RequestBody com.jingxuan.entity.Tag tag) {
-        tagMapper.insert(tag);
+        adminTagFacade.createTag(tag);
         return Result.ok();
     }
 
     @PutMapping("/admin/tags/{id}")
     @Operation(summary = "更新标签")
     public Result<Void> updateTag(@PathVariable Long id, @RequestBody com.jingxuan.entity.Tag tag) {
-        tag.setId(id);
-        tagMapper.updateById(tag);
+        adminTagFacade.updateTag(id, tag);
         return Result.ok();
     }
 
     @DeleteMapping("/admin/tags/{id}")
     @Operation(summary = "删除标签")
     public Result<Void> deleteTag(@PathVariable Long id) {
-        tagMapper.deleteById(id);
-        workTagMapper.delete(Wrappers.<WorkTag>lambdaQuery()
-                .eq(WorkTag::getTagId, id));
+        adminTagFacade.deleteTag(id);
         return Result.ok();
     }
 }
