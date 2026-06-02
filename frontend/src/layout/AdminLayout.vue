@@ -92,20 +92,13 @@ import {
 } from '@element-plus/icons-vue'
 import request from '../api/request'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
-
-function getCachedUserInfo() {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
-}
+import type { UserInfo } from '@/api/student/auth'
+import { clearAuthStorage, getCachedUserInfo } from '@/utils/auth'
 
 const route = useRoute()
 const router = useRouter()
 const isSidebarCollapsed = ref(false)
-const userInfo = ref(getCachedUserInfo())
+const userInfo = ref<UserInfo | null>(getCachedUserInfo())
 const unreadCount = ref(0)
 let unreadTimer: ReturnType<typeof setInterval> | null = null
 const hasUnread = computed(() => unreadCount.value > 0)
@@ -193,8 +186,7 @@ const pageDescription = computed(() => descriptions[route.path] || '后台保持
 const goNotify = () => router.push('/admin/notify')
 
 const logout = () => {
-  sessionStorage.removeItem('token')
-  localStorage.removeItem('userInfo')
+  clearAuthStorage()
   router.push('/login')
 }
 </script>

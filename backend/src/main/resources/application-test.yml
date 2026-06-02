@@ -23,6 +23,7 @@ spring:
 
 # DeepSeek 审核测试环境直接放行
 deepseek:
+  api-key: ""
   fallback: bypass
 
 logging:

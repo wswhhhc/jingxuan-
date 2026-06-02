@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * JWT Token 提供者 — 创建、解析、验证
@@ -36,6 +37,7 @@ public class JwtTokenProvider {
     public String generateToken(Long userId, String username, String role, boolean rememberMe) {
         long exp = rememberMe ? rememberExpiration : expiration;
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .claim(SecurityConstants.CLAIM_USER_ID, userId)
                 .claim(SecurityConstants.CLAIM_USERNAME, username)
                 .claim(SecurityConstants.CLAIM_ROLE, role)

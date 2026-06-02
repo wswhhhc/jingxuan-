@@ -23,7 +23,6 @@ import com.jingxuan.mapper.WorkMemberMapper;
 import com.jingxuan.mapper.WorkPublishMapper;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.score.service.ScoreService;
-import com.jingxuan.modules.sensitive.service.DeepSeekReviewService;
 import com.jingxuan.modules.work.dto.WorkCreateRequest;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
 import com.jingxuan.modules.work.dto.WorkListVO;
@@ -39,7 +38,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -60,11 +58,12 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     private final WorkPublishMapper workPublishMapper;
     private final ScoreBatchMapper scoreBatchMapper;
     private final LogService logService;
+    private final WorkContentReviewService workContentReviewService;
+    private final WorkAttachmentBindingService workAttachmentBindingService;
+    private final WorkMemberPolicyService workMemberPolicyService;
+    private final WorkQueryValidator workQueryValidator;
     @org.springframework.beans.factory.annotation.Autowired
     private ScoreService scoreService;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    private DeepSeekReviewService deepSeekReviewService;
 
     @Override
     public Long createWork(WorkCreateRequest request) {
@@ -78,7 +77,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
                         .last("LIMIT 1"));
         // 无论是否有活跃批次，都先回填已注册成员的 studentId（两者后续用途不同：studentId 用于成员识别与权限校验，批次唯一性校验仅在有活跃批次时执行）
         if (CollectionUtil.isNotEmpty(request.getMembers())) {
-            resolveMemberStudentIds(request.getMembers());
+            workMemberPolicyService.resolveMemberStudentIds(request.getMembers());
         }
 
         if (activeBatch != null) {
@@ -91,34 +90,11 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
                 throw new BusinessException("您在当前评分批次中已有作品，每个学生只能提交一个作品");
             }
             // 检查注册成员是否已在同一批次的其他作品中
-            if (CollectionUtil.isNotEmpty(request.getMembers())) {
-                for (WorkMemberDTO member : request.getMembers()) {
-                    if (member.getStudentId() != null) {
-                        Long memberCount = workMemberMapper.selectCount(
-                                Wrappers.<WorkMember>lambdaQuery()
-                                        .eq(WorkMember::getStudentId, member.getStudentId())
-                                        .inSql(WorkMember::getWorkId,
-                                                "SELECT id FROM work WHERE batch_id = " + activeBatch.getId() + " AND deleted = 0"));
-                        if (memberCount > 0) {
-                            throw new BusinessException("团队成员 " + member.getStudentName() + " 在当前批次中已有作品，每个学生只能参与一个作品");
-                        }
-                    }
-                }
-            }
+            workMemberPolicyService.ensureMembersAvailableInBatch(request.getMembers(), activeBatch.getId(), null);
         }
 
         // 内容安全审核：作品标题、简介、运行说明
-        String reviewText = String.join("\n",
-                request.getTitle() != null ? request.getTitle() : "",
-                request.getSummary() != null ? request.getSummary() : "",
-                request.getRunDesc() != null ? request.getRunDesc() : ""
-        ).trim();
-        if (!reviewText.isEmpty()) {
-            DeepSeekReviewService.ReviewResult review = deepSeekReviewService.review(reviewText, "work");
-            if (!review.isPassed()) {
-                throw new BusinessException("作品内容违规：" + review.getReason());
-            }
-        }
+        workContentReviewService.review(request.getTitle(), request.getSummary(), request.getRunDesc());
 
         Work work = new Work();
         work.setTitle(request.getTitle());
@@ -141,26 +117,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         }
 
         // 校验附件归属：只允许绑定未被其他作品占用的附件
-        List<String> rawIds = request.getAttachmentIds();
-        List<Long> attachmentIds = parseAttachmentIds(rawIds);
-        log.debug("createWork: raw attachmentIds={}, parsed attachmentIds={}", rawIds, attachmentIds);
-        if (CollectionUtil.isNotEmpty(attachmentIds)) {
-            Long occupiedCount = workAttachmentMapper.selectCount(
-                    Wrappers.<WorkAttachment>lambdaQuery()
-                            .in(WorkAttachment::getId, attachmentIds)
-                            .isNotNull(WorkAttachment::getWorkId)
-            );
-            if (occupiedCount > 0) {
-                throw new BusinessException("部分附件已被其他作品绑定，请重新上传");
-            }
-            workAttachmentMapper.update(
-                    null,
-                    Wrappers.<WorkAttachment>lambdaUpdate()
-                            .set(WorkAttachment::getWorkId, work.getId())
-                            .in(WorkAttachment::getId, attachmentIds)
-                            .isNull(WorkAttachment::getWorkId)
-            );
-        }
+        workAttachmentBindingService.bindNewAttachments(work.getId(), request.getAttachmentIds());
 
         return work.getId();
     }
@@ -202,104 +159,25 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         }
 
         // 内容安全审核（编辑后的文本，在入库前检查）
-        String reviewText = String.join("\n",
-                work.getTitle() != null ? work.getTitle() : "",
-                work.getSummary() != null ? work.getSummary() : "",
-                work.getRunDesc() != null ? work.getRunDesc() : ""
-        ).trim();
-        if (!reviewText.isEmpty()) {
-            DeepSeekReviewService.ReviewResult review = deepSeekReviewService.review(reviewText, "work");
-            if (!review.isPassed()) {
-                throw new BusinessException("作品内容违规：" + review.getReason());
-            }
-        }
+        workContentReviewService.review(work.getTitle(), work.getSummary(), work.getRunDesc());
 
         baseMapper.updateById(work);
 
         // 重新保存成员
         if (request.getMembers() != null) {
             // 无论是否有活跃批次，都先回填已注册成员的 studentId（后续 saveMembers 会将其持久化到 work_member.student_id）
-            resolveMemberStudentIds(request.getMembers());
+            workMemberPolicyService.resolveMemberStudentIds(request.getMembers());
 
             // 仅当当前作品已归属批次时，校验同批次成员唯一性。
             // 兼容历史草稿：batchId 为空的作品可继续编辑，提交时再做批次唯一性校验。
             Long batchIdForCheck = work.getBatchId();
-            if (batchIdForCheck != null) {
-                for (WorkMemberDTO member : request.getMembers()) {
-                    if (member.getStudentId() != null) {
-                        Long memberCount = workMemberMapper.selectCount(
-                                Wrappers.<WorkMember>lambdaQuery()
-                                        .eq(WorkMember::getStudentId, member.getStudentId())
-                                        .inSql(WorkMember::getWorkId,
-                                                "SELECT id FROM work WHERE id != " + id + " AND batch_id = " + batchIdForCheck + " AND deleted = 0"));
-                        if (memberCount > 0) {
-                            throw new BusinessException("团队成员 " + member.getStudentName() + " 在当前批次中已有作品，每个学生只能参与一个作品");
-                        }
-                    }
-                }
-            }
+            workMemberPolicyService.ensureMembersAvailableInBatch(request.getMembers(), batchIdForCheck, id);
             workMemberService.saveMembers(id, request.getMembers());
         }
 
         // 差量更新附件关联
         if (request.getAttachmentIds() != null) {
-            List<Long> targetIds = parseAttachmentIds(request.getAttachmentIds());
-
-            // 查出当前作品已绑定的附件 ID
-            List<Long> currentIds = workAttachmentMapper.selectList(
-                            Wrappers.<WorkAttachment>lambdaQuery()
-                                    .eq(WorkAttachment::getWorkId, id)
-                                    .select(WorkAttachment::getId))
-                    .stream()
-                    .map(WorkAttachment::getId)
-                    .collect(Collectors.toList());
-
-            // 计算差量：需要解绑的（当前有，目标无）
-            List<Long> removedIds = currentIds.stream()
-                    .filter(cid -> !targetIds.contains(cid))
-                    .collect(Collectors.toList());
-
-            // 计算差量：需要绑定的（目标有，当前无）
-            List<Long> addedIds = targetIds.stream()
-                    .filter(tid -> !currentIds.contains(tid))
-                    .distinct()
-                    .collect(Collectors.toList());
-
-            // 校验 addedIds 不能被其他作品占用
-            if (!addedIds.isEmpty()) {
-                Long occupiedCount = workAttachmentMapper.selectCount(
-                        Wrappers.<WorkAttachment>lambdaQuery()
-                                .in(WorkAttachment::getId, addedIds)
-                                .isNotNull(WorkAttachment::getWorkId)
-                                .ne(WorkAttachment::getWorkId, id)
-                );
-                if (occupiedCount > 0) {
-                    throw new BusinessException("部分附件已被其他作品绑定，请重新上传");
-                }
-            }
-
-            // 解绑 removedIds
-            if (!removedIds.isEmpty()) {
-                workAttachmentMapper.update(
-                        null,
-                        Wrappers.<WorkAttachment>lambdaUpdate()
-                                .set(WorkAttachment::getWorkId, null)
-                                .in(WorkAttachment::getId, removedIds)
-                                .eq(WorkAttachment::getWorkId, id)
-                );
-            }
-
-            // 绑定 addedIds（防御性条件：只绑定未关联或本作品的）
-            if (!addedIds.isEmpty()) {
-                workAttachmentMapper.update(
-                        null,
-                        Wrappers.<WorkAttachment>lambdaUpdate()
-                                .set(WorkAttachment::getWorkId, id)
-                                .in(WorkAttachment::getId, addedIds)
-                                .and(w -> w.isNull(WorkAttachment::getWorkId)
-                                        .or().eq(WorkAttachment::getWorkId, id))
-                );
-            }
+            workAttachmentBindingService.replaceBindings(id, request.getAttachmentIds());
         }
     }
 
@@ -316,12 +194,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         checkOwnership(work);
 
         // 检查附件数量：提交审核前至少有一个附件
-        Long attachmentCount = workAttachmentMapper.selectCount(
-                Wrappers.<WorkAttachment>lambdaQuery()
-                        .eq(WorkAttachment::getWorkId, id));
-        if (attachmentCount == null || attachmentCount == 0) {
-            throw new BusinessException("请先上传附件再提交审核");
-        }
+        workAttachmentBindingService.ensureHasBoundAttachment(id);
 
         // 自动关联活跃批次（兼容旧数据——创建时未设置 batchId 的作品）
         if (work.getBatchId() == null) {
@@ -344,17 +217,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         }
 
         // 内容安全审核
-        String reviewText = String.join("\n",
-                work.getTitle() != null ? work.getTitle() : "",
-                work.getSummary() != null ? work.getSummary() : "",
-                work.getRunDesc() != null ? work.getRunDesc() : ""
-        ).trim();
-        if (!reviewText.isEmpty()) {
-            DeepSeekReviewService.ReviewResult review = deepSeekReviewService.review(reviewText, "work");
-            if (!review.isPassed()) {
-                throw new BusinessException("作品内容违规：" + review.getReason());
-            }
-        }
+        workContentReviewService.review(work.getTitle(), work.getSummary(), work.getRunDesc());
 
         work.setStatus(AuditStatusEnum.SUBMITTED.getValue());
         work.setSubmitTime(LocalDateTime.now());
@@ -377,11 +240,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         checkOwnership(work);
 
         // 解除附件关联，释放附件供后续作品复用
-        workAttachmentMapper.update(
-                Wrappers.<WorkAttachment>lambdaUpdate()
-                        .set(WorkAttachment::getWorkId, null)
-                        .eq(WorkAttachment::getWorkId, id)
-        );
+        workAttachmentBindingService.releaseAll(id);
 
         // 逻辑删除（基于 BaseEntity @TableLogic 注解）
         baseMapper.deleteById(id);
@@ -434,9 +293,11 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         }
         // 提交时间范围筛选
         if (StrUtil.isNotBlank(request.getSubmitTimeBegin())) {
+            workQueryValidator.validateDateTime(request.getSubmitTimeBegin(), "submitTimeBegin");
             wrapper.ge(Work::getSubmitTime, request.getSubmitTimeBegin());
         }
         if (StrUtil.isNotBlank(request.getSubmitTimeEnd())) {
+            workQueryValidator.validateDateTime(request.getSubmitTimeEnd(), "submitTimeEnd");
             wrapper.le(Work::getSubmitTime, request.getSubmitTimeEnd());
         }
 
@@ -555,25 +416,6 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     // ==================== 私有方法 ====================
 
     /**
-     * 根据 studentNo 查询 sys_user 回填 studentId，
-     * 使"一人一批次仅能归属一个作品"约束覆盖前端不传 studentId 的情况。
-     * studentNo 为空或查不到已注册用户时跳过，不影响未注册成员设计。
-     */
-    private void resolveMemberStudentIds(List<WorkMemberDTO> members) {
-        if (CollectionUtil.isEmpty(members)) {
-            return;
-        }
-        for (WorkMemberDTO member : members) {
-            if (member.getStudentId() == null && StrUtil.isNotBlank(member.getStudentNo())) {
-                SysUser user = sysUserMapper.findByUsername(member.getStudentNo());
-                if (user != null) {
-                    member.setStudentId(user.getId());
-                }
-            }
-        }
-    }
-
-    /**
      * 根据 submitterId 查询提交人姓名
      */
     private String resolveSubmitterName(Long submitterId) {
@@ -629,24 +471,6 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
                         .eq(WorkMember::getWorkId, workId)
                         .eq(WorkMember::getStudentId, userId));
         return count != null && count > 0;
-    }
-
-    private List<Long> parseAttachmentIds(List<String> attachmentIds) {
-        if (CollectionUtil.isEmpty(attachmentIds)) {
-            return List.of();
-        }
-        List<Long> parsed = new ArrayList<>();
-        for (String attachmentId : attachmentIds) {
-            if (StrUtil.isBlank(attachmentId)) {
-                continue;
-            }
-            try {
-                parsed.add(Long.parseLong(attachmentId.trim()));
-            } catch (NumberFormatException e) {
-                throw new BusinessException("附件ID格式无效: " + attachmentId);
-            }
-        }
-        return parsed;
     }
 
     /**

@@ -10,8 +10,8 @@ spring:
     active: dev
   servlet:
     multipart:
-      max-file-size: 200MB
-      max-request-size: 500MB
+      max-file-size: 600MB
+      max-request-size: 700MB
   data:
     redis:
       host: localhost

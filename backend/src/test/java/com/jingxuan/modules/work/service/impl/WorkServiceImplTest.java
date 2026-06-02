@@ -58,11 +58,16 @@ class WorkServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        // @RequiredArgsConstructor 生成的构造器：所有 final 字段为参数
+        WorkContentReviewService contentReviewService = new WorkContentReviewService(deepSeekReviewService);
+        WorkAttachmentBindingService attachmentBindingService =
+                new WorkAttachmentBindingService(workAttachmentMapper);
+        WorkMemberPolicyService memberPolicyService =
+                new WorkMemberPolicyService(sysUserMapper, workMemberMapper);
+        WorkQueryValidator queryValidator = new WorkQueryValidator();
+
         workService = new WorkServiceImpl(sysUserMapper, workMemberService, workMemberMapper,
-                workAttachmentMapper, workPublishMapper, scoreBatchMapper, logService);
-        // 手动注入 @Autowired 非 final 字段
-        ReflectionTestUtils.setField(workService, "deepSeekReviewService", deepSeekReviewService);
+                workAttachmentMapper, workPublishMapper, scoreBatchMapper, logService,
+                contentReviewService, attachmentBindingService, memberPolicyService, queryValidator);
         // baseMapper（从 ServiceImpl 继承）
         ReflectionTestUtils.setField(workService, "baseMapper", workMapper);
 

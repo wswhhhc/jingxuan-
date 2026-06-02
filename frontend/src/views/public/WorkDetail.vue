@@ -208,6 +208,7 @@ import { getCommentList, addComment, deleteComment } from '../../api/public/comm
 import type { CommentItem } from '../../api/public/comment'
 import type { UserInfo } from '../../api/student/auth'
 import type { WorkItem } from '../../api/student/work'
+import { getCachedUserInfo, hasLoginToken } from '@/utils/auth'
 import CommentThread from './CommentThread.vue'
 
 function openPreview() {
@@ -240,19 +241,6 @@ const isWorkLeader = computed(() => {
   if (!userId || !work.value?.members?.length) return false
   return work.value.members.some(member => member.isLeader && member.studentId === userId)
 })
-
-function getCachedUserInfo(): UserInfo | null {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    return raw ? JSON.parse(raw) as UserInfo : null
-  } catch {
-    return null
-  }
-}
-
-function hasLoginToken() {
-  return !!(sessionStorage.getItem('token') || localStorage.getItem('token'))
-}
 
 function syncLoginState() {
   isLoggedIn.value = hasLoginToken()

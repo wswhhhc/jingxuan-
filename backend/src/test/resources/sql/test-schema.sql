@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS sys_log (
     duration BIGINT DEFAULT NULL,
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 );
 
@@ -124,6 +125,7 @@ CREATE TABLE IF NOT EXISTS sys_notification (
     read_time DATETIME DEFAULT NULL,
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 );
 
@@ -321,6 +323,7 @@ CREATE TABLE IF NOT EXISTS reward_issue (
 CREATE TABLE IF NOT EXISTS port_manage (
     id BIGINT NOT NULL,
     port_number INT NOT NULL,
+    port_type VARCHAR(20) NOT NULL DEFAULT 'backend',
     status TINYINT NOT NULL DEFAULT 0,
     work_id BIGINT DEFAULT NULL,
     allocated_time DATETIME DEFAULT NULL,
@@ -330,6 +333,33 @@ CREATE TABLE IF NOT EXISTS port_manage (
     deleted TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE KEY uk_port_number (port_number)
+);
+
+-- 作品运行状态
+CREATE TABLE IF NOT EXISTS work_runtime (
+    id BIGINT NOT NULL,
+    work_id BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    runtime_type VARCHAR(30) NOT NULL DEFAULT 'windows_process',
+    project_path VARCHAR(500) DEFAULT NULL,
+    manifest_path VARCHAR(500) DEFAULT NULL,
+    backend_port INT DEFAULT NULL,
+    frontend_port INT DEFAULT NULL,
+    backend_pid BIGINT DEFAULT NULL,
+    frontend_pid BIGINT DEFAULT NULL,
+    preview_url VARCHAR(500) DEFAULT NULL,
+    mysql_schema VARCHAR(100) DEFAULT NULL,
+    redis_db INT DEFAULT NULL,
+    prepare_time DATETIME DEFAULT NULL,
+    start_time DATETIME DEFAULT NULL,
+    stop_time DATETIME DEFAULT NULL,
+    last_access_time DATETIME DEFAULT NULL,
+    error_message VARCHAR(1000) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_work_runtime_work_id (work_id)
 );
 
 -- 标签

@@ -1,5 +1,6 @@
 package com.jingxuan.modules.work.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.jingxuan.entity.WorkAttachment;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -8,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "作品详情VO")
 public class WorkDetailVO {
 

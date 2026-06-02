@@ -54,6 +54,10 @@ class RuntimeServiceImplTest {
     private RuntimeLeaseService runtimeLeaseService;
     @Mock
     private RuntimeAdapter runtimeAdapter;
+    @Mock
+    private RuntimeEnvironmentFactory runtimeEnvironmentFactory;
+    @Mock
+    private RuntimeHealthProbe runtimeHealthProbe;
 
     @Spy
     @InjectMocks
@@ -98,6 +102,8 @@ class RuntimeServiceImplTest {
         when(runtimeAdapter.startFrontend(any())).thenReturn(
                 ProcessStartResult.builder().pid(222L).started(true).build()
         );
+        when(runtimeEnvironmentFactory.buildBackendEnv(any(), any())).thenReturn(java.util.Map.of());
+        when(runtimeEnvironmentFactory.buildFrontendEnv(any())).thenReturn(java.util.Map.of());
         doReturn(true).when(runtimeService).waitForEndpoint(anyString(), anyInt(), anyLong());
 
         StartResponseDTO response = runtimeService.start(12L);

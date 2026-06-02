@@ -82,19 +82,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { HomeFilled, Reading, EditPen, TrendCharts, Bell, ArrowDown } from '@element-plus/icons-vue'
 import { getUnreadCount } from '../api/teacher/notify'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
-
-function getCachedUserInfo() {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
-}
+import type { UserInfo } from '@/api/student/auth'
+import { clearAuthStorage, getCachedUserInfo } from '@/utils/auth'
 
 const route = useRoute()
 const router = useRouter()
-const userInfo = ref(getCachedUserInfo())
+const userInfo = ref<UserInfo | null>(getCachedUserInfo())
 const unreadCount = ref(0)
 let unreadTimer: ReturnType<typeof setInterval> | null = null
 const hasUnread = computed(() => unreadCount.value > 0)
@@ -152,8 +145,7 @@ const pageDescription = computed(() => descriptions[route.path] || '面向评审
 const goNotify = () => router.push('/teacher/notify')
 
 const logout = () => {
-  sessionStorage.removeItem('token')
-  localStorage.removeItem('userInfo')
+  clearAuthStorage()
   router.push('/login')
 }
 </script>

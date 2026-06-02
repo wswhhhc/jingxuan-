@@ -12,7 +12,9 @@ DELETE FROM work_attachment;
 DELETE FROM work_member;
 DELETE FROM work_comment;
 DELETE FROM reward_issue;
+DELETE FROM rank_reward;
 DELETE FROM reward_config;
+DELETE FROM work_runtime;
 DELETE FROM work;
 DELETE FROM score_batch;
 DELETE FROM sensitive_rule;
@@ -99,6 +101,10 @@ INSERT INTO work_member (id, work_id, student_id, student_name, student_no, clas
 (7, 6, 100, '张三', '2022001', '2022级软件技术1班', 1),
 (8, 7, 105, '周八', '2022006', '2022级大数据1班', 1);
 
+-- 附件
+INSERT INTO work_attachment (id, work_id, file_name, file_type, file_size, file_url, category) VALUES
+(1, 1, 'occupied.zip', 'zip', 1024, '/uploads/test/occupied.zip', 'attachment');
+
 -- 审核记录
 INSERT INTO work_audit (id, work_id, auditor_id, result, reason, audit_time) VALUES
 (1, 1, 1, 1, '作品完整，同意发布', '2025-03-18 10:00:00'),
@@ -147,8 +153,8 @@ INSERT INTO rank_reward (id, batch_id, reward_level, reward_name, prize_name, qu
 (3, 1, 3, '第3名', '荣誉证书+100元京东卡', 1);
 
 -- 端口
-INSERT INTO port_manage (id, port_number, status) VALUES
-(1, 3000, 0), (2, 3001, 0), (3, 3002, 0);
+INSERT INTO port_manage (id, port_number, port_type, status) VALUES
+(1, 3000, 'backend', 0), (2, 3001, 'backend', 0), (3, 3002, 'frontend', 0);
 
 -- 菜单
 INSERT INTO sys_menu (id, menu_name, parent_id, path, permission, type, icon, sort) VALUES

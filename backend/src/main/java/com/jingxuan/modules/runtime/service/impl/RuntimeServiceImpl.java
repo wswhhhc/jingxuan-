@@ -24,9 +24,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,6 +44,8 @@ public class RuntimeServiceImpl implements RuntimeService {
     private final RuntimeDatabaseService runtimeDatabaseService;
     private final RuntimeLeaseService runtimeLeaseService;
     private final RuntimeAdapter runtimeAdapter;
+    private final RuntimeEnvironmentFactory runtimeEnvironmentFactory;
+    private final RuntimeHealthProbe runtimeHealthProbe;
 
     @Override
     public PrepareResponseDTO prepare(Long workId) {
@@ -107,8 +106,8 @@ public class RuntimeServiceImpl implements RuntimeService {
                 .mysqlSchema(dataResource.getMysqlSchema())
                 .redisDb(dataResource.getRedisDb())
                 .manifest(manifest)
-                .backendEnv(buildBackendEnv(ports, dataResource))
-                .frontendEnv(buildFrontendEnv(ports))
+                .backendEnv(runtimeEnvironmentFactory.buildBackendEnv(ports, dataResource))
+                .frontendEnv(runtimeEnvironmentFactory.buildFrontendEnv(ports))
                 .build();
 
         ProcessStartResult backendResult = runtimeAdapter.startBackend(context);
@@ -249,25 +248,6 @@ public class RuntimeServiceImpl implements RuntimeService {
         }
     }
 
-    private java.util.Map<String, String> buildBackendEnv(PortAllocationResult ports, RuntimeDataResource dataResource) {
-        java.util.Map<String, String> env = new java.util.HashMap<>();
-        env.put("SERVER_PORT", String.valueOf(ports.getBackendPort()));
-        env.put("SPRING_DATASOURCE_URL", "jdbc:mysql://localhost:3306/" + dataResource.getMysqlSchema());
-        env.put("SPRING_DATASOURCE_USERNAME", "root");
-        env.put("SPRING_DATASOURCE_PASSWORD", "252629");
-        env.put("SPRING_DATA_REDIS_HOST", "localhost");
-        env.put("SPRING_DATA_REDIS_PORT", "6379");
-        env.put("SPRING_DATA_REDIS_DATABASE", String.valueOf(dataResource.getRedisDb()));
-        return env;
-    }
-
-    private java.util.Map<String, String> buildFrontendEnv(PortAllocationResult ports) {
-        java.util.Map<String, String> env = new java.util.HashMap<>();
-        env.put("FRONTEND_PORT", String.valueOf(ports.getFrontendPort()));
-        env.put("VITE_API_BASE_URL", "http://127.0.0.1:" + ports.getBackendPort());
-        return env;
-    }
-
     private void cleanupFailedStart(Long workId, RuntimeDataResource dataResource) {
         runtimePortService.releasePorts(workId);
         runtimeDatabaseService.releaseResources(dataResource.getMysqlSchema(), dataResource.getRedisDb());
@@ -293,27 +273,6 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     boolean waitForEndpoint(String url, int maxAttempts, long sleepMillis) {
-        for (int attempt = 0; attempt < maxAttempts; attempt++) {
-            try {
-                HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-                connection.setConnectTimeout(1000);
-                connection.setReadTimeout(1000);
-                connection.setRequestMethod("GET");
-                int code = connection.getResponseCode();
-                if (code >= 200 && code < 500) {
-                    return true;
-                }
-            } catch (IOException ignored) {
-                // continue polling
-            }
-
-            try {
-                Thread.sleep(sleepMillis);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return false;
-            }
-        }
-        return false;
+        return runtimeHealthProbe.waitForEndpoint(url, maxAttempts, sleepMillis);
     }
 }

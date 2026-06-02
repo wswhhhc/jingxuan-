@@ -3,6 +3,7 @@ import studentRoutes from './modules/student'
 import publicRoutes from './modules/public'
 import adminRoutes from './modules/admin'
 import teacherRoutes from './modules/teacher'
+import { getAuthToken, getCachedUserInfo } from '@/utils/auth'
 
 const routes = [
   ...publicRoutes,
@@ -32,7 +33,7 @@ export function resolveAuthRedirect(to: {
   meta: Record<string, any>
   matched: Array<{ meta?: Record<string, any> }>
 }): string | undefined {
-  const token = sessionStorage.getItem('token') || localStorage.getItem('token')
+  const token = getAuthToken()
 
   if (to.meta.noAuth) {
     return undefined
@@ -47,13 +48,7 @@ export function resolveAuthRedirect(to: {
     return undefined
   }
 
-  let userInfo: Record<string, any> | null = null
-  try {
-    const raw = localStorage.getItem('userInfo')
-    if (raw) userInfo = JSON.parse(raw)
-  } catch {
-    userInfo = null
-  }
+  const userInfo = getCachedUserInfo()
 
   if (!userInfo) {
     return '/login'

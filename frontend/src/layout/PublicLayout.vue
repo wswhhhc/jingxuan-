@@ -44,12 +44,13 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
+import { hasLoginToken } from '@/utils/auth'
 
 const router = useRouter()
 const isLoggedIn = ref(false)
 
 const syncLoginState = () => {
-  isLoggedIn.value = !!(localStorage.getItem('token') || sessionStorage.getItem('token'))
+  isLoggedIn.value = hasLoginToken()
 }
 
 const entryPath = computed(() => (isLoggedIn.value ? '/student/home' : '/login'))

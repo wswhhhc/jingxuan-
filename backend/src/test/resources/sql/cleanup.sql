@@ -11,6 +11,7 @@ DELETE FROM work_comment;
 DELETE FROM rank_reward;
 DELETE FROM reward_issue;
 DELETE FROM reward_config;
+DELETE FROM work_runtime;
 DELETE FROM work;
 DELETE FROM score_batch;
 DELETE FROM sensitive_rule;

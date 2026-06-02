@@ -2,18 +2,9 @@ package com.jingxuan.modules.adapter;
 
 import com.jingxuan.common.PageResult;
 import com.jingxuan.common.Result;
-import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.SysNotification;
-import com.jingxuan.entity.Work;
-import com.jingxuan.enums.AuditStatusEnum;
-import com.jingxuan.mapper.ScoreBatchMapper;
 import com.jingxuan.modules.notification.service.NotificationService;
-import com.jingxuan.modules.rank.dto.RankQueryRequest;
-import com.jingxuan.modules.rank.dto.RankVO;
-import com.jingxuan.modules.rank.service.RankService;
 import com.jingxuan.modules.score.dto.MyRankVO;
-import com.jingxuan.modules.score.dto.ScoreSummaryVO;
-import com.jingxuan.modules.score.service.ScoreService;
 import com.jingxuan.modules.work.dto.WorkCreateRequest;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
 import com.jingxuan.modules.work.dto.WorkListVO;
@@ -28,8 +19,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 学生端 API 适配 — 桥接前端期望的学生端路径与后端实际接口
@@ -41,9 +33,7 @@ import java.util.stream.Collectors;
 public class StudentApiController {
 
     private final WorkService workService;
-    private final ScoreBatchMapper scoreBatchMapper;
-    private final ScoreService scoreService;
-    private final RankService rankService;
+    private final StudentRankingFacade studentRankingFacade;
     private final NotificationService notificationService;
 
     @Operation(summary = "创建作品")
@@ -101,65 +91,7 @@ public class StudentApiController {
     @GetMapping("/student/score/my-ranks")
     public Result<List<MyRankVO>> getMyRanks() {
         Long userId = SecurityUtils.requireCurrentUserId();
-        List<Work> myWorks = workService.listParticipatedWorks(userId).stream()
-                .filter(work -> Integer.valueOf(AuditStatusEnum.APPROVED.getValue()).equals(work.getStatus()))
-                .filter(work -> work.getBatchId() != null)
-                .toList();
-
-        if (myWorks.isEmpty()) {
-            return Result.ok(Collections.emptyList());
-        }
-
-        // 1. 批量查询批次（替代逐个 selectById）
-        Set<Long> batchIds = myWorks.stream().map(Work::getBatchId).collect(Collectors.toSet());
-        Map<Long, ScoreBatch> batchMap = scoreBatchMapper.selectBatchIds(batchIds).stream()
-                .filter(b -> Integer.valueOf(1).equals(b.getRankPublished()))
-                .collect(Collectors.toMap(ScoreBatch::getId, b -> b));
-
-        if (batchMap.isEmpty()) {
-            return Result.ok(Collections.emptyList());
-        }
-
-        // 2. 每个批次只加载一次全量排行（替代每个作品都拉一次）
-        Map<Long, List<RankVO>> rankCache = new HashMap<>();
-        for (Long batchId : batchMap.keySet()) {
-            RankQueryRequest rankQuery = new RankQueryRequest();
-            rankQuery.setBatchId(batchId);
-            rankQuery.setTopN(Integer.MAX_VALUE);
-            rankCache.put(batchId, rankService.getRankList(rankQuery));
-        }
-
-        // 3. 组装结果
-        List<MyRankVO> result = new ArrayList<>();
-        for (Work work : myWorks) {
-            ScoreBatch batch = batchMap.get(work.getBatchId());
-            if (batch == null) continue;
-
-            ScoreSummaryVO summary = scoreService.getScoreSummary(work.getId());
-            if (summary == null) continue;
-
-            List<RankVO> fullRank = rankCache.get(work.getBatchId());
-            if (fullRank == null || fullRank.isEmpty()) continue;
-
-            MyRankVO vo = new MyRankVO();
-            vo.setBatchId(batch.getId());
-            vo.setBatchName(batch.getBatchName());
-            vo.setWorkId(work.getId());
-            vo.setWorkTitle(work.getTitle());
-            vo.setAvgScore(summary.getAvgTotal());
-            vo.setAvgInnovation(summary.getAvgInnovation());
-            vo.setAvgDifficulty(summary.getAvgDifficulty());
-            vo.setAvgCompletion(summary.getAvgCompletion());
-            vo.setAvgPracticality(summary.getAvgPracticality());
-            vo.setTeacherCount(summary.getTeacherCount());
-            fullRank.stream()
-                    .filter(r -> r.getWorkId().equals(work.getId()))
-                    .findFirst()
-                    .ifPresent(r -> vo.setRankNo(r.getRankNo()));
-            result.add(vo);
-        }
-
-        return Result.ok(result);
+        return Result.ok(studentRankingFacade.getPublishedRanks(userId));
     }
 
     @Operation(summary = "获取学生通知列表")

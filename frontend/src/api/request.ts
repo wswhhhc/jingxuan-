@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { clearAuthStorage as clearSharedAuthStorage, getAuthToken } from '@/utils/auth'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -38,15 +39,13 @@ function isLoginRequest(config?: { url?: string | undefined } | null): boolean {
 }
 
 function clearAuthStorage() {
-  sessionStorage.removeItem('token')
-  localStorage.removeItem('token')
-  localStorage.removeItem('userInfo')
+  clearSharedAuthStorage()
   localStorage.removeItem('remember')
 }
 
 request.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token')
+    const token = getAuthToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
