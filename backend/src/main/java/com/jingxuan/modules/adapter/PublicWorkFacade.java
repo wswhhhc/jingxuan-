@@ -215,6 +215,7 @@ public class PublicWorkFacade {
         vo.setTitle(work.getTitle());
         vo.setTechStack(work.getTechStack());
         vo.setCoverUrl(work.getCoverUrl());
+        vo.setPreviewUrl(work.getPreviewUrl());
         vo.setStatus(work.getStatus());
         vo.setSubmitTime(work.getSubmitTime());
         if (publish != null) {

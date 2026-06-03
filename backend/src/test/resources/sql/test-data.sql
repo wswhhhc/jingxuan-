@@ -14,11 +14,9 @@ DELETE FROM work_comment;
 DELETE FROM reward_issue;
 DELETE FROM rank_reward;
 DELETE FROM reward_config;
-DELETE FROM work_runtime;
 DELETE FROM work;
 DELETE FROM score_batch;
 DELETE FROM sensitive_rule;
-DELETE FROM port_manage;
 DELETE FROM tag;
 DELETE FROM sys_notification;
 DELETE FROM sys_notice;
@@ -151,10 +149,6 @@ INSERT INTO rank_reward (id, batch_id, reward_level, reward_name, prize_name, qu
 (1, 1, 1, '第1名', '荣誉证书+500元京东卡', 1),
 (2, 1, 2, '第2名', '荣誉证书+300元京东卡', 1),
 (3, 1, 3, '第3名', '荣誉证书+100元京东卡', 1);
-
--- 端口
-INSERT INTO port_manage (id, port_number, port_type, status) VALUES
-(1, 3000, 'backend', 0), (2, 3001, 'backend', 0), (3, 3002, 'frontend', 0);
 
 -- 菜单
 INSERT INTO sys_menu (id, menu_name, parent_id, path, permission, type, icon, sort) VALUES

@@ -88,7 +88,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Odometer, Finished, Notification, Setting,
-  Connection, TrophyBase, Timer, Key, Bell, ArrowDown, User, Document, List, ChatDotRound, Fold, Expand
+  TrophyBase, Timer, Key, Bell, ArrowDown, User, Document, List, ChatDotRound, Fold, Expand
 } from '@element-plus/icons-vue'
 import request from '../api/request'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
@@ -113,7 +113,6 @@ const descriptions: Record<string, string> = {
   '/admin/notice': '用统一的编辑界面维护公告内容。',
   '/admin/comment': '治理评论秩序，同时保留公开交流的可读性。',
   '/admin/rules': '以结构化方式维护审核规则。',
-  '/admin/port': '管理展示端口与预览入口。',
   '/admin/prize': '整理奖项、奖品与榜单呈现逻辑。',
   '/admin/score-batch': '配置评审批次，控制时间与范围。',
   '/admin/roles': '管理角色权限，保持后台秩序清晰。',
@@ -128,7 +127,6 @@ const adminMenuItems = [
   { index: '/admin/notice', label: '公告管理', icon: Notification },
   { index: '/admin/comment', label: '评论管理', icon: ChatDotRound },
   { index: '/admin/rules', label: '审核规则', icon: Setting },
-  { index: '/admin/port', label: '端口管理', icon: Connection },
   { index: '/admin/prize', label: '奖品配置', icon: TrophyBase },
   { index: '/admin/score-batch', label: '评分批次', icon: Timer },
   { index: '/admin/roles', label: '角色权限', icon: Key },
@@ -169,7 +167,6 @@ const pageTitle = computed(() => {
     '/admin/notice': '公告管理',
     '/admin/comment': '评论管理',
     '/admin/rules': '审核规则',
-    '/admin/port': '端口管理',
     '/admin/prize': '奖品配置',
     '/admin/score-batch': '评分批次',
     '/admin/roles': '角色权限',

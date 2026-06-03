@@ -18,6 +18,7 @@ public class Work extends BaseEntity {
     private String advisor;
     private String coverUrl;
     private String videoUrl;
+    private String previewUrl;
     private String runDesc;
     private Integer status;
     private Long submitterId;

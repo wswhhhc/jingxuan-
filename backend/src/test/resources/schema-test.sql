@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS work (
     advisor VARCHAR(50),
     cover_url VARCHAR(500),
     video_url VARCHAR(500),
+    preview_url VARCHAR(500),
     run_desc TEXT,
     status INT DEFAULT 0,
     reject_reason VARCHAR(500),
@@ -246,18 +247,6 @@ CREATE TABLE IF NOT EXISTS reward_issue (
     operator_id BIGINT,
     cancel_time DATETIME,
     cancel_reason VARCHAR(500),
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    deleted INT DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS port_manage (
-    id BIGINT PRIMARY KEY,
-    work_id BIGINT,
-    port INT NOT NULL,
-    status INT DEFAULT 0,
-    assigned_at DATETIME,
-    released_at DATETIME,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     deleted INT DEFAULT 0

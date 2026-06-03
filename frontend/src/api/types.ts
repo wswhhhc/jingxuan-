@@ -6,6 +6,7 @@ export interface WorkListVO {
   title: string
   techStack: string
   coverUrl: string
+  previewUrl: string
   status: number          // 0=草稿 1=已提交 2=已驳回 3=已通过
   statusLabel: string
   submitterName: string

@@ -92,15 +92,15 @@
                 </el-button>
                 <template #tip>
                   <div class="el-upload__tip">
-                    支持 zip/rar/7z/jpg/png/gif/mp4/pdf，压缩包≤200MB，图片≤10MB，视频≤500MB
+                    支持 zip/rar/7z/jpg/png/gif/mp4/pdf，源码压缩包≤500MB，图片≤10MB，视频≤1.5GB
                   </div>
                 </template>
               </el-upload>
             </div>
           </el-form-item>
 
-          <el-form-item label="演示视频链接">
-            <el-input v-model="form.videoUrl" placeholder="请输入演示视频在线播放地址（可选）" />
+          <el-form-item label="服务器地址" prop="previewUrl">
+            <el-input v-model="form.previewUrl" placeholder="请输入服务器 IP、域名或 http/https 完整地址" clearable />
           </el-form-item>
 
           <el-form-item label="运行说明" prop="runDescription">
@@ -184,6 +184,7 @@ const form = reactive<WorkForm>({
   advisor: '',
   coverUrl: '',
   videoUrl: '',
+  previewUrl: '',
   runDescription: '',
   attachments: [],
   members: [{
@@ -205,6 +206,32 @@ const rules = {
   techStack: [
     { required: true, message: '请输入技术栈', trigger: 'blur' },
   ],
+  previewUrl: [
+    { required: true, message: '请输入服务器访问地址', trigger: 'blur' },
+    { validator: validatePreviewUrl, trigger: 'blur' },
+  ],
+}
+
+function validatePreviewUrl(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  const url = normalizePreviewUrl(value)
+  if (!url) {
+    callback(new Error('请输入服务器访问地址'))
+    return
+  }
+  try {
+    const parsed = new URL(url)
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      callback(new Error('服务器访问地址仅支持 IP、域名、http:// 或 https:// 地址'))
+      return
+    }
+    if (['localhost', '127.0.0.1', '0.0.0.0', '[::1]'].includes(parsed.hostname.toLowerCase())) {
+      callback(new Error('服务器访问地址不能使用本地地址'))
+      return
+    }
+    callback()
+  } catch {
+    callback(new Error('服务器访问地址格式不正确'))
+  }
 }
 
 function getRouteWorkId() {
@@ -222,7 +249,8 @@ async function loadWork(id: string | number) {
       techStack: data.techStack,
       advisor: data.advisor,
       coverUrl: data.coverUrl,
-      videoUrl: data.videoUrl,
+      videoUrl: resolveUploadedVideoUrl(data.attachments) || data.videoUrl || '',
+      previewUrl: data.previewUrl || '',
       runDescription: data.runDescription,
       members: data.members?.length ? data.members : form.members,
     })
@@ -290,11 +318,14 @@ async function beforeFileUpload(file: File): Promise<boolean> {
     ElMessage.error('不支持的文件格式')
     return false
   }
-  const maxSize = ext === 'mp4' ? 500 * 1024 * 1024
+  const maxSize = ext === 'mp4' ? 1536 * 1024 * 1024
     : ['jpg', 'png', 'gif'].includes(ext) ? 10 * 1024 * 1024
-    : 200 * 1024 * 1024
+    : 500 * 1024 * 1024
   if (file.size > maxSize) {
-    ElMessage.error('文件大小超出限制')
+    const message = ext === 'mp4' ? '视频文件不能超过1.5GB'
+      : ['jpg', 'png', 'gif'].includes(ext) ? '图片文件不能超过10MB'
+      : '源代码压缩包文件不能超过500MB'
+    ElMessage.error(message)
     return false
   }
   try {
@@ -308,10 +339,13 @@ async function beforeFileUpload(file: File): Promise<boolean> {
     form.attachments.push({
       id: res.data.id,
       fileName: file.name,
-      fileType: ext === 'mp4' ? 'video' : ['jpg', 'png', 'gif'].includes(ext) ? 'image' : 'zip',
+      fileType: ext,
       fileSize: file.size,
       fileUrl: res.data.url,
     })
+    if (ext === 'mp4') {
+      form.videoUrl = res.data.url
+    }
     fileList.value = [...fileList.value, uploadedFile]
     ElMessage.success('文件已上传到服务器，保存草稿或提交审核后会绑定到作品')
   } catch {
@@ -329,15 +363,41 @@ function handleFileRemove(_file: any, list: any[]) {
     return
   }
   const idx = form.attachments.findIndex(a => a.fileName === _file.name)
-  if (idx !== -1) form.attachments.splice(idx, 1)
+  if (idx !== -1) {
+    const [removed] = form.attachments.splice(idx, 1)
+    if (removed?.fileType?.toLowerCase?.() === 'mp4' && form.videoUrl === removed.fileUrl) {
+      form.videoUrl = resolveUploadedVideoUrl(form.attachments)
+    }
+  }
 }
 
 function buildSubmitData(): WorkForm {
+  form.videoUrl = resolveUploadedVideoUrl(form.attachments)
+  form.previewUrl = normalizePreviewUrl(form.previewUrl)
   return {
     ...form,
     attachments: form.attachments,
     members: form.members.filter((m) => m.studentName && m.studentNo),
   }
+}
+
+function hasSourceArchive() {
+  return form.attachments.some((file) => ['zip', 'rar', '7z'].includes(file.fileType?.toLowerCase?.() || ''))
+}
+
+function hasVideoFile() {
+  return form.attachments.some((file) => file.fileType?.toLowerCase?.() === 'mp4')
+}
+
+function resolveUploadedVideoUrl(attachments?: WorkAttachment[]) {
+  return attachments?.find((file) => file.fileType?.toLowerCase?.() === 'mp4')?.fileUrl || ''
+}
+
+function normalizePreviewUrl(value?: string) {
+  const url = value?.trim()
+  if (!url) return ''
+  if (/^https?:\/\//i.test(url)) return url
+  return `http://${url}`
 }
 
 async function handleSaveDraft() {
@@ -361,6 +421,14 @@ async function handleSaveDraft() {
 async function handleSaveAndSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  if (!hasSourceArchive()) {
+    ElMessage.error('提交审核前请上传源代码压缩包')
+    return
+  }
+  if (!hasVideoFile()) {
+    ElMessage.error('提交审核前请上传演示视频文件')
+    return
+  }
   submitting.value = true
   try {
     const data = buildSubmitData()

@@ -37,8 +37,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -102,7 +105,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         work.setTechStack(request.getTechStack());
         work.setAdvisor(request.getAdvisor());
         work.setCoverUrl(request.getCoverUrl());
-        work.setVideoUrl(request.getVideoUrl());
+        work.setPreviewUrl(normalizePreviewUrl(request.getPreviewUrl()));
         work.setRunDesc(request.getRunDesc());
         work.setStatus(AuditStatusEnum.DRAFT.getValue());
         work.setSubmitterId(currentUserId);
@@ -118,6 +121,8 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
 
         // 校验附件归属：只允许绑定未被其他作品占用的附件
         workAttachmentBindingService.bindNewAttachments(work.getId(), request.getAttachmentIds());
+        work.setVideoUrl(resolveBoundMp4Url(work.getId()));
+        baseMapper.updateById(work);
 
         return work.getId();
     }
@@ -151,8 +156,8 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         if (request.getCoverUrl() != null) {
             work.setCoverUrl(request.getCoverUrl());
         }
-        if (request.getVideoUrl() != null) {
-            work.setVideoUrl(request.getVideoUrl());
+        if (request.getPreviewUrl() != null) {
+            work.setPreviewUrl(normalizePreviewUrl(request.getPreviewUrl()));
         }
         if (request.getRunDesc() != null) {
             work.setRunDesc(request.getRunDesc());
@@ -178,6 +183,8 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         // 差量更新附件关联
         if (request.getAttachmentIds() != null) {
             workAttachmentBindingService.replaceBindings(id, request.getAttachmentIds());
+            work.setVideoUrl(resolveBoundMp4Url(id));
+            baseMapper.updateById(work);
         }
     }
 
@@ -193,8 +200,9 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         }
         checkOwnership(work);
 
-        // 检查附件数量：提交审核前至少有一个附件
-        workAttachmentBindingService.ensureHasBoundAttachment(id);
+        work.setPreviewUrl(validatePreviewUrlForSubmission(work.getPreviewUrl()));
+        ensureRequiredSubmissionFiles(id);
+        work.setVideoUrl(resolveBoundMp4Url(id));
 
         // 自动关联活跃批次（兼容旧数据——创建时未设置 batchId 的作品）
         if (work.getBatchId() == null) {
@@ -341,6 +349,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         vo.setAdvisor(work.getAdvisor());
         vo.setCoverUrl(work.getCoverUrl());
         vo.setVideoUrl(work.getVideoUrl());
+        vo.setPreviewUrl(work.getPreviewUrl());
         vo.setRunDesc(work.getRunDesc());
         vo.setStatus(work.getStatus());
         vo.setStatusLabel(AuditStatusEnum.of(work.getStatus()).getLabel());
@@ -364,7 +373,6 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         if (publish != null) {
             vo.setPublishStatus(publish.getPublishStatus());
             vo.setFeatured(publish.getFeatured());
-            vo.setPreviewUrl(publish.getPreviewUrl());
         }
 
         // 平均分（仅排行榜已公示时显示）
@@ -449,6 +457,81 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         }
     }
 
+    private String validatePreviewUrlForSubmission(String previewUrl) {
+        if (StrUtil.isBlank(previewUrl)) {
+            throw new BusinessException("提交审核前请填写服务器访问地址");
+        }
+        String normalizedPreviewUrl = normalizePreviewUrl(previewUrl);
+        try {
+            URI uri = new URI(normalizedPreviewUrl);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                throw new BusinessException("服务器访问地址仅支持IP、域名、http://或https://地址");
+            }
+            if (StrUtil.isBlank(host)) {
+                throw new BusinessException("服务器访问地址必须包含有效的IP地址或域名");
+            }
+            String normalizedHost = host.toLowerCase(Locale.ROOT);
+            if ("localhost".equals(normalizedHost)
+                    || "127.0.0.1".equals(normalizedHost)
+                    || "0.0.0.0".equals(normalizedHost)
+                    || "::1".equals(normalizedHost)) {
+                throw new BusinessException("服务器访问地址不能使用本地地址");
+            }
+            return normalizedPreviewUrl;
+        } catch (URISyntaxException e) {
+            throw new BusinessException("服务器访问地址格式不正确");
+        }
+    }
+
+    private String normalizePreviewUrl(String previewUrl) {
+        if (StrUtil.isBlank(previewUrl)) {
+            return previewUrl;
+        }
+        String normalized = previewUrl.trim();
+        String lowerCaseUrl = normalized.toLowerCase(Locale.ROOT);
+        if (lowerCaseUrl.startsWith("http://") || lowerCaseUrl.startsWith("https://")) {
+            return normalized;
+        }
+        return "http://" + normalized;
+    }
+
+    private void ensureRequiredSubmissionFiles(Long workId) {
+        List<WorkAttachment> attachments = workAttachmentMapper.selectList(
+                Wrappers.<WorkAttachment>lambdaQuery()
+                        .eq(WorkAttachment::getWorkId, workId));
+        boolean hasSourceArchive = attachments.stream().anyMatch(attachment -> isSourceArchive(attachment.getFileType()));
+        boolean hasVideo = attachments.stream().anyMatch(attachment -> "mp4".equals(normalizeFileType(attachment.getFileType())));
+        if (!hasSourceArchive) {
+            throw new BusinessException("提交审核前请上传源代码压缩包");
+        }
+        if (!hasVideo) {
+            throw new BusinessException("提交审核前请上传演示视频文件");
+        }
+    }
+
+    private boolean isSourceArchive(String fileType) {
+        String normalized = normalizeFileType(fileType);
+        return "zip".equals(normalized) || "rar".equals(normalized) || "7z".equals(normalized);
+    }
+
+    private String normalizeFileType(String fileType) {
+        return fileType == null ? "" : fileType.toLowerCase(Locale.ROOT);
+    }
+
+    private String resolveBoundMp4Url(Long workId) {
+        return workAttachmentMapper.selectList(
+                        Wrappers.<WorkAttachment>lambdaQuery()
+                                .eq(WorkAttachment::getWorkId, workId))
+                .stream()
+                .filter(attachment -> "mp4".equals(normalizeFileType(attachment.getFileType())))
+                .map(WorkAttachment::getFileUrl)
+                .filter(StrUtil::isNotBlank)
+                .findFirst()
+                .orElse(null);
+    }
+
     /**
      * 校验当前学生是否可以查看作品详情
      */
@@ -482,6 +565,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         vo.setTitle(work.getTitle());
         vo.setTechStack(work.getTechStack());
         vo.setCoverUrl(work.getCoverUrl());
+        vo.setPreviewUrl(work.getPreviewUrl());
         vo.setStatus(work.getStatus());
         vo.setStatusLabel(AuditStatusEnum.of(work.getStatus()).getLabel());
         vo.setSubmitterId(work.getSubmitterId());

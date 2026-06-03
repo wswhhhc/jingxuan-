@@ -38,12 +38,6 @@ const adminRoutes: RouteRecordRaw[] = [
         meta: { title: '审核规则' }
       },
       {
-        path: 'port',
-        name: 'AdminPort',
-        component: () => import('@/views/admin/port/index.vue'),
-        meta: { title: '端口管理' }
-      },
-      {
         path: 'prize',
         name: 'AdminPrize',
         component: () => import('@/views/admin/prize/index.vue'),

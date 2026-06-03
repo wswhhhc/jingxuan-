@@ -20,12 +20,6 @@ const publicRoutes: RouteRecordRaw[] = [
         meta: { title: 'Work Detail' },
       },
       {
-        path: 'preview/:id',
-        name: 'PublicWorkPreview',
-        component: () => import('../../views/public/WorkPreview.vue'),
-        meta: { title: 'Online Preview' },
-      },
-      {
         path: 'ranking',
         name: 'PublicRanking',
         component: () => import('../../views/public/Ranking.vue'),

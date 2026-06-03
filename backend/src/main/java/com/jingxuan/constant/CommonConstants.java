@@ -32,11 +32,11 @@ public interface CommonConstants {
     int PASSWORD_MIN_LENGTH = 6;
 
     /** 文件上传：单文件最大字节数 */
-    long FILE_MAX_SIZE = 200L * 1024 * 1024;
+    long FILE_MAX_SIZE = 500L * 1024 * 1024;
 
     long IMAGE_MAX_SIZE = 10L * 1024 * 1024;
 
-    long VIDEO_MAX_SIZE = 500L * 1024 * 1024;
+    long VIDEO_MAX_SIZE = 1536L * 1024 * 1024;
 
     /** 文件上传白名单 */
     String[] ALLOWED_EXTENSIONS = {"zip", "rar", "7z", "jpg", "png", "gif", "mp4", "pdf"};

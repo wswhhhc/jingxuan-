@@ -84,17 +84,6 @@ INSERT INTO work_publish (id, work_id, publish_status, featured, publish_time, p
 ON DUPLICATE KEY UPDATE work_id = VALUES(work_id);
 
 -- ============================================================
--- 端口池
--- ============================================================
-INSERT INTO port_manage (id, port_number, status) VALUES
-(1, 3000, 0),
-(2, 3001, 0),
-(3, 3002, 0),
-(4, 3003, 0),
-(5, 3004, 0)
-ON DUPLICATE KEY UPDATE port_number = VALUES(port_number);
-
--- ============================================================
 -- 作品成员
 -- ============================================================
 INSERT INTO work_member (id, work_id, student_id, student_name, student_no, class_name, is_leader) VALUES

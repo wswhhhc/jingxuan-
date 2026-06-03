@@ -21,6 +21,9 @@ public class WorkListVO {
     @Schema(description = "封面图")
     private String coverUrl;
 
+    @Schema(description = "服务器访问地址")
+    private String previewUrl;
+
     @Schema(description = "审核状态")
     private Integer status;
 

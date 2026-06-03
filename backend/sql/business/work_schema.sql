@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS work (
     tech_stack VARCHAR(500) DEFAULT NULL COMMENT '技术栈，逗号分隔',
     advisor VARCHAR(100) DEFAULT NULL COMMENT '指导教师',
     cover_url VARCHAR(500) DEFAULT NULL COMMENT '封面图URL',
-    video_url VARCHAR(500) DEFAULT NULL COMMENT '演示视频URL/链接',
+    video_url VARCHAR(500) DEFAULT NULL COMMENT '上传的mp4演示视频文件地址',
+    preview_url VARCHAR(500) DEFAULT NULL COMMENT '服务器访问地址',
     run_desc TEXT DEFAULT NULL COMMENT '运行说明',
     status TINYINT NOT NULL DEFAULT 0 COMMENT '审核状态 0=草稿 1=已提交 2=已驳回 3=已通过',
     submitter_id BIGINT NOT NULL COMMENT '提交人/队长ID',
@@ -232,26 +233,7 @@ CREATE TABLE IF NOT EXISTS reward_issue (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='奖品发放记录';
 
 -- ============================================================
--- 12. 端口管理表
--- ============================================================
-CREATE TABLE IF NOT EXISTS port_manage (
-    id BIGINT NOT NULL COMMENT '端口ID',
-    port_number INT NOT NULL COMMENT '端口号',
-    status TINYINT NOT NULL DEFAULT 0 COMMENT '状态 0=空闲 1=使用中 2=已释放',
-    work_id BIGINT DEFAULT NULL COMMENT '关联作品ID',
-    allocated_time DATETIME DEFAULT NULL COMMENT '分配时间',
-    preview_url VARCHAR(500) DEFAULT NULL COMMENT '预览地址',
-    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除 0=正常 1=删除',
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_port_number (port_number),
-    KEY idx_status (status),
-    KEY idx_work_id (work_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='端口管理';
-
--- ============================================================
--- 7. 奖品配置表
+-- 12. 奖品配置表
 -- ============================================================
 CREATE TABLE IF NOT EXISTS reward_config (
     id BIGINT NOT NULL COMMENT '配置ID',

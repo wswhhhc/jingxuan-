@@ -34,6 +34,7 @@ export interface WorkForm {
   advisor: string
   coverUrl: string
   videoUrl: string
+  previewUrl: string
   runDescription: string
   members: WorkMember[]
   attachments: WorkAttachment[]
@@ -47,6 +48,7 @@ export interface WorkItem {
   advisor: string
   coverUrl: string
   videoUrl: string
+  previewUrl: string
   runDescription: string
   status: 'draft' | 'submitted' | 'rejected' | 'approved'
   statusLabel?: string
@@ -96,15 +98,15 @@ function adaptDetailVO(item: any): WorkItem {
 
 function toCreateRequest(form: WorkForm) {
   const attachmentIds = form.attachments.filter(a => a.id).map(a => a.id)
-  console.log('[DEBUG] toCreateRequest attachments:', form.attachments)
-  console.log('[DEBUG] toCreateRequest attachmentIds:', attachmentIds)
+  const uploadedVideoUrl = getUploadedVideoUrl(form)
   return {
     title: form.title,
     summary: form.summary,
     techStack: form.techStack,
     advisor: form.advisor,
     coverUrl: form.coverUrl,
-    videoUrl: form.videoUrl,
+    videoUrl: uploadedVideoUrl,
+    previewUrl: form.previewUrl,
     runDesc: form.runDescription,
     members: form.members.map((m) => ({
       studentName: m.studentName,
@@ -118,15 +120,15 @@ function toCreateRequest(form: WorkForm) {
 
 function toUpdateRequest(form: WorkForm) {
   const attachmentIds = form.attachments.filter(a => a.id).map(a => a.id)
-  console.log('[DEBUG] toUpdateRequest attachments:', form.attachments)
-  console.log('[DEBUG] toUpdateRequest attachmentIds:', attachmentIds)
+  const uploadedVideoUrl = getUploadedVideoUrl(form)
   return {
     title: form.title,
     summary: form.summary,
     techStack: form.techStack,
     advisor: form.advisor,
     coverUrl: form.coverUrl,
-    videoUrl: form.videoUrl,
+    videoUrl: uploadedVideoUrl,
+    previewUrl: form.previewUrl,
     runDesc: form.runDescription,
     members: form.members.map((m) => ({
       id: m.id,
@@ -138,6 +140,10 @@ function toUpdateRequest(form: WorkForm) {
     })),
     attachmentIds,
   }
+}
+
+function getUploadedVideoUrl(form: WorkForm) {
+  return form.attachments.find(a => a.fileType?.toLowerCase?.() === 'mp4')?.fileUrl || ''
 }
 
 /* ============ 分页响应适配 ============ */

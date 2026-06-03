@@ -26,8 +26,11 @@ public class WorkUpdateRequest {
     @Schema(description = "封面图URL")
     private String coverUrl;
 
-    @Schema(description = "演示视频URL")
+    @Schema(description = "上传的mp4演示视频文件地址")
     private String videoUrl;
+
+    @Schema(description = "服务器访问地址")
+    private String previewUrl;
 
     @Schema(description = "运行说明")
     private String runDesc;

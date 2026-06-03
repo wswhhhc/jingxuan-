@@ -562,43 +562,6 @@ class AdminApiTest extends BaseApiTest {
     }
 
     @Nested
-    @DisplayName("端口管理")
-    class PortManagement {
-
-        @Test
-        @DisplayName("端口列表")
-        void portList() {
-            ApiResponse resp = adminApi.get("/admin/port/list");
-            resp.assertOk();
-        }
-
-        @Test
-        @DisplayName("可用端口")
-        void availablePorts() {
-            ApiResponse resp = adminApi.get("/admin/port/available");
-            resp.assertOk();
-            assertTrue(resp.getDataNode().isArray());
-        }
-
-        @Test
-        @DisplayName("分配并释放端口")
-        void allocateAndRelease() {
-            // 分配端口 3000 给作品 1
-            ApiResponse allocResp = adminApi.post("/admin/port/allocate",
-                    Map.of("workId", 1, "portNumber", 3000));
-            assertTrue(allocResp.getCode() == 200 || allocResp.getCode() == 400,
-                    "分配端口期望 200/400，实际: " + allocResp.getCode());
-
-            if (allocResp.getCode() == 200) {
-                long portId = allocResp.getDataNode().get("id").asLong();
-                // 释放
-                ApiResponse releaseResp = adminApi.post("/admin/port/" + portId + "/release", null);
-                assertTrue(releaseResp.getCode() == 200 || releaseResp.getCode() == 400);
-            }
-        }
-    }
-
-    @Nested
     @DisplayName("评分明细")
     class ScoreDetail {
 

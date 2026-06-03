@@ -127,6 +127,7 @@
           <div class="detail-item"><label>指导老师</label><span>{{ detail.advisor }}</span></div>
           <div class="detail-item"><label>提交时间</label><span>{{ formatDateTime(detail.submitTime) }}</span></div>
           <div class="detail-item"><label>发布状态</label><span>{{ detail.publishStatusLabel || '未发布' }}</span></div>
+          <div class="detail-item full"><label>服务器地址</label><span>{{ detail.previewUrl || '未填写' }}</span></div>
           <div class="detail-item full"><label>简介</label><p>{{ detail.summary }}</p></div>
         </div>
         <el-divider />
@@ -188,9 +189,6 @@
             active-text="精选"
             inactive-text="普通"
           />
-        </el-form-item>
-        <el-form-item label="预览地址">
-          <el-input v-model="featuredForm.previewUrl" placeholder="http:// 或 https:// 开头的在线体验地址" clearable />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -352,20 +350,18 @@ const handleOffline = async (workId: number) => {
 const featuredDialogVisible = ref(false)
 const featuredForm = reactive({
   title: '',
-  enabled: 0 as 0 | 1,
-  previewUrl: ''
+  enabled: 0 as 0 | 1
 })
 
 const handleFeatured = (work: any) => {
   featuredForm.title = work.title
   featuredForm.enabled = work.featured === 1 ? 1 : 0
-  featuredForm.previewUrl = work.previewUrl || ''
   featuredDialogVisible.value = true
 }
 
 const handleFeaturedSubmit = async () => {
   try {
-    await setFeatured(detail.value!.id, featuredForm.enabled, featuredForm.previewUrl || undefined)
+    await setFeatured(detail.value!.id, featuredForm.enabled)
     ElMessage.success(featuredForm.enabled ? '已设为精选' : '已取消精选')
     featuredDialogVisible.value = false
     const res = await getAuditDetail(detail.value!.id)

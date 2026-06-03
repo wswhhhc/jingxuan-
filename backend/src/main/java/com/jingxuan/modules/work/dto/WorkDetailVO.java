@@ -31,8 +31,11 @@ public class WorkDetailVO {
     @Schema(description = "封面图")
     private String coverUrl;
 
-    @Schema(description = "演示视频URL")
+    @Schema(description = "上传的mp4演示视频文件地址")
     private String videoUrl;
+
+    @Schema(description = "服务器访问地址")
+    private String previewUrl;
 
     @Schema(description = "运行说明")
     private String runDesc;
@@ -69,9 +72,6 @@ public class WorkDetailVO {
 
     @Schema(description = "是否精选")
     private Integer featured;
-
-    @Schema(description = "预览地址")
-    private String previewUrl;
 
     @Schema(description = "平均分（审核通过且有评分时）")
     private String avgScore;
