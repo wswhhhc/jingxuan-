@@ -1,0 +1,1 @@
+import{t as e}from"./request-BU2xfoKQ.js";function t(t){return e.get(`/teacher/notify/list`,{params:t})}function n(t){return e.post(`/teacher/notify/read/${t}`)}function r(){return e.post(`/teacher/notify/read-all`)}function i(){return e.get(`/teacher/notify/unread-count`)}export{n as i,i as n,r,t};

@@ -1,0 +1,121 @@
+package com.jingxuan.modules.auth.controller;
+
+import com.jingxuan.common.Result;
+import com.jingxuan.entity.SysUser;
+import com.jingxuan.enums.UserStatusEnum;
+import com.jingxuan.mapper.SysUserMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/auth")
+public class RegistrationController {
+
+    @Autowired
+    private SysUserMapper sysUserMapper;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @PostMapping("/register")
+    public Result<Map<String, Object>> register(@RequestBody Map<String, Object> body) {
+        String username = (String) body.get("username");
+        String password = (String) body.get("password");
+        String realName = (String) body.get("realName");
+        String email = (String) body.get("email");
+        String verifyCode = (String) body.get("verifyCode");
+
+        Integer roleId;
+        Object roleIdObj = body.get("roleId");
+        if (roleIdObj instanceof Integer) {
+            roleId = (Integer) roleIdObj;
+        } else if (roleIdObj instanceof Number) {
+            roleId = ((Number) roleIdObj).intValue();
+        } else {
+            roleId = Integer.valueOf(roleIdObj.toString());
+        }
+
+        // 字段验证
+        if (username == null || username.trim().isEmpty()) {
+            return Result.error("请输入用户名（学号/工号）");
+        }
+        if (password == null || password.length() < 6) {
+            return Result.error("密码至少6位");
+        }
+        if (realName == null || realName.trim().isEmpty()) {
+            return Result.error("请输入真实姓名");
+        }
+        if (email == null || email.trim().isEmpty()) {
+            return Result.error("请输入邮箱地址");
+        }
+        if (verifyCode == null || verifyCode.trim().isEmpty()) {
+            return Result.error("请输入验证码");
+        }
+        if (roleId == null || (roleId != 1 && roleId != 2)) {
+            return Result.error("请选择有效的角色（学生或教师）");
+        }
+
+        email = email.trim();
+        username = username.trim().toLowerCase();
+        realName = realName.trim();
+
+        // 验证码校验
+        String verifyKey = "jingxuan:verify:" + email + ":" + roleId;
+        String code = redisTemplate.opsForValue().get(verifyKey);
+        if (code == null) {
+            return Result.error("验证码已过期，请重新发送");
+        }
+        if (!code.equals(verifyCode.trim())) {
+            return Result.error("验证码不正确");
+        }
+
+        // 检查用户名是否已存在
+        SysUser existing = sysUserMapper.findByUsername(username);
+        if (existing != null) {
+            return Result.error("该用户名已被注册");
+        }
+
+        // 创建用户
+        SysUser user = new SysUser();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setRealName(realName);
+        user.setEmail(email);
+        user.setRoleId(roleId);
+        user.setStatus(UserStatusEnum.ENABLED);
+        user.setFirstLogin(false);
+
+        // 解析 classId（新增）
+        Object classIdObj = body.get("classId");
+        if (classIdObj instanceof Number) {
+            user.setClassId(((Number) classIdObj).longValue());
+        } else if (classIdObj instanceof String && !((String) classIdObj).isEmpty()) {
+            user.setClassId(Long.valueOf((String) classIdObj));
+        }
+
+        try {
+            sysUserMapper.insert(user);
+            redisTemplate.delete(verifyKey);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", user.getId());
+            result.put("username", user.getUsername());
+            result.put("realName", user.getRealName());
+            return Result.ok("注册成功", result);
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("Duplicate")) {
+                return Result.error("该邮箱或用户名已被注册");
+            }
+            throw e;
+        }
+    }
+}

@@ -1,0 +1,42 @@
+# Java
+*.jar
+*.jar.bak*
+target/
+*.class
+BOOT-INF/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Uploads
+uploads/*
+
+# Build / Dist (keep dist but exclude bak/conflicted/gz)
+frontend/dist/assets/*.bak
+frontend/dist/assets/*.conflicted
+frontend/dist/assets/*.gz
+
+# Logs
+*.log
+logs/
+
+# Claude
+.claude/
