@@ -1,5 +1,7 @@
 .env
+.env.local
 *.log
+logs/
 target/
 dist/
 node_modules/
@@ -16,3 +18,28 @@ outputs/
 tmp/
 tmp_doc_work/
 tmp_perf_render/
+
+# Java artifacts
+*.jar
+*.jar.bak*
+*.class
+BOOT-INF/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build leftovers
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+frontend/dist/assets/*.bak
+frontend/dist/assets/*.conflicted
+frontend/dist/assets/*.gz

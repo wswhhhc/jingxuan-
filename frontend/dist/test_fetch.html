@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<body>
+<div id="app">
+  <select id="classSelect">
+    <option value="">请选择班级</option>
+  </select>
+</div>
+<script>
+// Simulate the exact same logic as Register-CjdMGnXM.js
+async function testFetch() {
+  console.log('[Test] Starting fetch...');
+  try {
+    const response = await fetch('/api/public/classes');
+    console.log('[Test] Response status:', response.status);
+    const data = await response.json();
+    console.log('[Test] Data received:', JSON.stringify(data).substring(0, 200));
+    if (data.code === 0 || data.code === 200) {
+      const classList = data.data || [];
+      console.log('[Test] Classes count:', classList.length);
+      const select = document.getElementById('classSelect');
+      classList.forEach(cls => {
+        const opt = document.createElement('option');
+        opt.value = cls.id;
+        opt.textContent = cls.dictLabel;
+        select.appendChild(opt);
+        console.log('[Test] Added option:', cls.dictLabel);
+      });
+    } else {
+      console.error('[Test] API error:', data.code, data.message);
+    }
+  } catch(e) {
+    console.error('[Test] Fetch error:', e);
+  }
+}
+testFetch();
+</script>
+</body>
+</html>

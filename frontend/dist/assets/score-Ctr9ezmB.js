@@ -1,0 +1,1 @@
+import{t as e}from"./request-BU2xfoKQ.js";function t(t){return e.post(`/teacher/score`,t)}function n(t){return e.get(`/teacher/score/${t}`)}function r(t){return e.get(`/teacher/score/history`,{params:t})}function i(){return e.get(`/teacher/batch/list`)}export{t as i,n,r,i as t};

@@ -34,11 +34,11 @@
 CREATE DATABASE jingxuan CHARACTER SET utf8mb4;
 
 -- 建表
-source backend/sql/base/init_schema.sql;
-source backend/sql/business/work_schema.sql;
+source sql/base/init_schema.sql;
+source sql/business/work_schema.sql;
 
 -- 测试数据（可选）
-source backend/sql/business/test_data.sql;
+source sql/business/test_data.sql;
 ```
 
 ### 配置
@@ -46,11 +46,9 @@ source backend/sql/business/test_data.sql;
 1. 复制 `.env.example` 为 `.env`，填入 DeepSeek API Key（内容审核用，不配也能跑）
 2. 修改 `backend/src/main/resources/application-dev.yml` 中的数据库和 Redis 连接信息
 
-### 一键启动
+### 启动方式
 
-直接双击 `start.bat`，会自动打包后端、启动后端（端口 8080）、启动前端（端口 5173）。
-
-或手动启动：
+#### 开发环境
 
 ```bash
 # 后端
@@ -67,6 +65,30 @@ npm run dev
 - 前端地址：http://localhost:5173
 - 后端地址：http://localhost:8080
 - API 文档：http://localhost:8080/doc.html
+
+#### 服务器部署
+
+项目根目录为部署包结构，服务器上预期运行环境：
+
+- JDK 17+
+- MySQL 8
+- Redis 7
+- Nginx
+- PM2
+
+```bash
+# 首次部署：建库并导入 SQL
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS jingxuan CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p jingxuan < sql/base/init_schema.sql
+mysql -u root -p jingxuan < sql/business/work_schema.sql
+
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env 填入实际配置
+
+# 部署启动
+bash deploy-server.sh
+```
 
 ## 功能概览
 
@@ -96,7 +118,10 @@ npm run dev
 │       ├── api/             # API 封装（含数据适配层：后端枚举/字段 → 前端格式）
 │       ├── router/          # 路由与鉴权守卫
 │       └── layout/          # 布局组件
-└── docs/                    # 设计文档与接口规范
+├── sql/                     # 部署用 SQL
+├── docs/                    # 设计文档与接口规范
+├── ecosystem.config.cjs     # PM2 配置
+└── nginx-jingxuan.conf      # Nginx 配置
 ```
 
 ## 评分规则
