@@ -74,24 +74,21 @@
     <select id="selectScoreDistribution" resultType="java.util.HashMap">
         SELECT
             CASE
-                WHEN ROUND(AVG(ws.total), 0) >= 90 THEN '90-100'
-                WHEN ROUND(AVG(ws.total), 0) >= 80 THEN '80-89'
-                WHEN ROUND(AVG(ws.total), 0) >= 70 THEN '70-79'
-                WHEN ROUND(AVG(ws.total), 0) >= 60 THEN '60-69'
+                WHEN avg_score >= 90 THEN '90-100'
+                WHEN avg_score >= 80 THEN '80-89'
+                WHEN avg_score >= 70 THEN '70-79'
+                WHEN avg_score >= 60 THEN '60-69'
                 ELSE '60以下'
             END AS name,
-            COUNT(DISTINCT w.id) AS value
-        FROM work w
-        INNER JOIN work_score ws ON w.id = ws.work_id AND ws.deleted = 0
-        WHERE w.deleted = 0 AND w.status = 3
-        GROUP BY
-            CASE
-                WHEN ROUND(AVG(ws.total), 0) >= 90 THEN '90-100'
-                WHEN ROUND(AVG(ws.total), 0) >= 80 THEN '80-89'
-                WHEN ROUND(AVG(ws.total), 0) >= 70 THEN '70-79'
-                WHEN ROUND(AVG(ws.total), 0) >= 60 THEN '60-69'
-                ELSE '60以下'
-            END
+            COUNT(*) AS value
+        FROM (
+            SELECT ROUND(AVG(ws.total), 0) AS avg_score
+            FROM work w
+            INNER JOIN work_score ws ON w.id = ws.work_id AND ws.deleted = 0
+            WHERE w.deleted = 0 AND w.status = 3
+            GROUP BY w.id
+        ) t
+        GROUP BY name
         ORDER BY name
     </select>
 
