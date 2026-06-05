@@ -23,10 +23,7 @@ INSERT INTO sys_dict (id, dict_type, dict_label, dict_value, sort, remark) VALUE
 (16, 'tech_stack', 'React/Next.js', 'React/Next.js', 7, NULL),
 (17, 'tech_stack', '微信小程序', '微信小程序', 8, NULL),
 (18, 'tech_stack', 'Android/Java', 'Android/Java', 9, NULL),
-(19, 'tech_stack', 'Flutter/Dart', 'Flutter/Dart', 10, NULL),
-(20, 'work_type', '课程实训', 'course', 1, NULL),
-(21, 'work_type', '毕业设计', 'graduation', 2, NULL),
-(22, 'work_type', '竞赛作品', 'competition', 3, NULL)
+(19, 'tech_stack', 'Flutter/Dart', 'Flutter/Dart', 10, NULL)
 ON DUPLICATE KEY UPDATE dict_label = VALUES(dict_label);
 
 -- ============================================================
