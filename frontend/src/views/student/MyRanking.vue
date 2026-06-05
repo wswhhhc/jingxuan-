@@ -81,7 +81,14 @@
       </el-table>
 
       <div v-if="!loading && !rankList.length" class="workspace-empty">
-        <el-empty description="暂无评分数据，排行榜公示后可见" />
+        <el-empty>
+          <template #description>
+            <p>暂无评分数据</p>
+            <p style="font-size:13px;color:var(--text-muted);margin-top:6px;">
+              作品评分后需要管理员在<b>评分批次管理</b>中发布排行榜，学生端才能查看。
+            </p>
+          </template>
+        </el-empty>
       </div>
     </section>
   </div>
