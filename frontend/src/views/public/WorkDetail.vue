@@ -114,24 +114,42 @@
           <span class="section-heading__meta">{{ work.attachments.length }} 个文件</span>
         </div>
 
-        <!-- 图片略缩图 -->
-        <div v-if="imageAttachments.length" class="image-gallery">
+        <!-- 媒体略缩图（图片 + 视频） -->
+        <div v-if="mediaAttachments.length" class="image-gallery">
           <div class="image-gallery__grid">
-            <el-image
-              v-for="(img, idx) in imageAttachments"
-              :key="img.id || idx"
-              :src="img.fileUrl"
-              :preview-src-list="previewSrcList"
-              :initial-index="previewIndexMap[img.fileUrl] ?? 0"
-              fit="cover"
-              class="gallery-thumb"
-              hide-on-click-modal
-              preview-teleported
-            >
-              <template #error>
-                <div class="gallery-thumb-error"><el-icon><Picture /></el-icon></div>
-              </template>
-            </el-image>
+            <template v-for="(media, idx) in mediaAttachments" :key="media.id || idx">
+              <el-image
+                v-if="IMAGE_TYPES.includes(media.fileType?.toLowerCase?.())"
+                :src="media.fileUrl"
+                :preview-src-list="previewSrcList"
+                :initial-index="previewIndexMap[media.fileUrl] ?? 0"
+                fit="cover"
+                class="gallery-thumb"
+                hide-on-click-modal
+                preview-teleported
+              >
+                <template #error>
+                  <div class="gallery-thumb-error"><el-icon><Picture /></el-icon></div>
+                </template>
+              </el-image>
+              <div
+                v-else
+                class="gallery-thumb gallery-thumb--video"
+                @click="activeVideoUrl = media.fileUrl; activeVideoName = media.fileName; videoDialogVisible = true"
+                :title="media.fileName"
+              >
+                <video
+                  :src="media.fileUrl"
+                  preload="metadata"
+                  muted
+                  playsinline
+                  class="gallery-thumb__video-el"
+                ></video>
+                <div class="gallery-thumb__video-overlay">
+                  <el-icon :size="28"><VideoCamera /></el-icon>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
 
@@ -164,6 +182,24 @@
         </div>
         <p v-if="!work.attachments.length" class="text-muted">暂无附件资料</p>
       </section>
+
+      <!-- 视频播放弹窗 -->
+      <el-dialog
+        v-model="videoDialogVisible"
+        :title="activeVideoName"
+        width="75%"
+        top="4vh"
+        destroy-on-close
+        class="video-player-dialog"
+        append-to-body
+      >
+        <video
+          :src="activeVideoUrl"
+          controls
+          autoplay
+          class="video-player"
+        ></video>
+      </el-dialog>
 
       <!-- ====== 评分详情（全宽，有评分才显示） ====== -->
       <section v-if="work.score !== undefined" class="surface-panel score-detail reveal-up reveal-delay-2">
@@ -308,7 +344,7 @@ import { getCommentList, addComment, deleteComment } from '@/api/public/comment'
 import type { CommentItem } from '@/api/public/comment'
 import type { UserInfo } from '@/api/student/auth'
 import type { WorkItem } from '@/api/student/work'
-import { IMAGE_TYPES } from '@/api/types'
+import { IMAGE_TYPES, VIDEO_TYPES } from '@/api/types'
 import { getCachedUserInfo, hasLoginToken } from '@/utils/auth'
 import CommentThread from './CommentThread.vue'
 
@@ -332,6 +368,9 @@ const guestName = ref('')
 const attachmentPage = ref(1)
 const pageSize = 6
 const attachmentExpanded = ref(false)
+const videoDialogVisible = ref(false)
+const activeVideoUrl = ref('')
+const activeVideoName = ref('')
 
 
 const techTags = computed(() => work.value?.techStack?.split(',').map((t) => t.trim()).filter(Boolean) || [])
@@ -347,6 +386,13 @@ const imageAttachments = computed(() => {
   return work.value?.attachments?.filter(att =>
     IMAGE_TYPES.includes(att.fileType?.toLowerCase?.())
   ) || []
+})
+
+const mediaAttachments = computed(() => {
+  return work.value?.attachments?.filter(att => {
+    const t = att.fileType?.toLowerCase?.() || ''
+    return IMAGE_TYPES.includes(t) || VIDEO_TYPES.includes(t)
+  }) || []
 })
 
 const previewSrcList = computed(() => {
@@ -921,6 +967,44 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
   background: var(--page-bg);
   border-radius: 14px;
+}
+
+/* ===== 视频略缩图 ===== */
+.gallery-thumb--video {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.gallery-thumb__video-el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gallery-thumb__video-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  transition: background 0.25s ease;
+}
+.gallery-thumb--video:hover .gallery-thumb__video-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* 视频播放弹窗 */
+.video-player-dialog :deep(.el-dialog__body) {
+  padding: 0;
+  background: #000;
+  border-radius: 0 0 8px 8px;
+}
+.video-player {
+  display: block;
+  width: 100%;
+  max-height: 80vh;
+  outline: none;
 }
 
 /* ===== 评分详情 ===== */

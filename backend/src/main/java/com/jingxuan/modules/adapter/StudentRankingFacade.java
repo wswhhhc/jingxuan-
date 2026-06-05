@@ -62,7 +62,6 @@ public class StudentRankingFacade {
                 .map(Work::getBatchId)
                 .collect(Collectors.toSet());
         return scoreBatchMapper.selectBatchIds(batchIds).stream()
-                .filter(batch -> Integer.valueOf(1).equals(batch.getRankPublished()))
                 .collect(Collectors.toMap(ScoreBatch::getId, batch -> batch));
     }
 

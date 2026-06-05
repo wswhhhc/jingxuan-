@@ -115,7 +115,7 @@
 
           <div class="review-actions">
             <el-button v-if="selectedWork.previewUrl" size="small" @click="openLink(selectedWork.previewUrl)">在线预览</el-button>
-            <el-button v-if="selectedWork.videoUrl" size="small" type="success" @click="openLink(selectedWork.videoUrl)">演示视频</el-button>
+            <el-button v-if="selectedWork.videoUrl" size="small" type="success" @click="openVideoPlayer(selectedWork.videoUrl, '演示视频')">演示视频</el-button>
             <el-button v-if="selectedWorkScored" size="small" type="default" @click="scrollToForm">修改评分</el-button>
           </div>
         </section>
@@ -139,7 +139,7 @@
               </div>
               <div class="material-actions">
                 <el-button v-if="selectedWork.previewUrl" size="small" @click="openLink(selectedWork.previewUrl)">在线预览</el-button>
-                <el-button v-if="selectedWork.videoUrl" size="small" type="success" @click="openLink(selectedWork.videoUrl)">演示视频</el-button>
+                <el-button v-if="selectedWork.videoUrl" size="small" type="success" @click="openVideoPlayer(selectedWork.videoUrl, '演示视频')">演示视频</el-button>
               </div>
             </div>
 
@@ -199,7 +199,7 @@
                   <div
                     v-else
                     class="gallery-thumb gallery-thumb--video"
-                    @click="openLink(media.fileUrl)"
+                    @click="openVideoPlayer(media.fileUrl, media.fileName)"
                     :title="media.fileName"
                   >
                     <video
@@ -245,6 +245,24 @@
               />
             </div>
           </section>
+
+      <!-- 视频播放弹窗 -->
+      <el-dialog
+        v-model="videoDialogVisible"
+        :title="activeVideoName"
+        width="75%"
+        top="4vh"
+        destroy-on-close
+        class="video-player-dialog"
+        append-to-body
+      >
+        <video
+          :src="activeVideoUrl"
+          controls
+          autoplay
+          class="video-player"
+        ></video>
+      </el-dialog>
 
           <!-- 评分表单 -->
           <section class="surface-panel score-card">
@@ -400,6 +418,9 @@ const techStackList = computed(() =>
 const attachmentPage = ref(1)
 const PAGE_SIZE = 6
 const attachmentExpanded = ref(false)
+const videoDialogVisible = ref(false)
+const activeVideoUrl = ref('')
+const activeVideoName = ref('')
 
 
 /** 媒体附件（图片+视频），用于画廊网格展示 */
@@ -640,6 +661,12 @@ const handleSubmit = async () => {
 const openLink = (url?: string) => {
   if (!url) return
   window.open(url, '_blank')
+}
+
+const openVideoPlayer = (url: string, name: string) => {
+  activeVideoUrl.value = url
+  activeVideoName.value = name
+  videoDialogVisible.value = true
 }
 
 const scrollToForm = () => {
@@ -937,6 +964,19 @@ onUnmounted(() => {
 }
 .gallery-thumb--video .gallery-thumb-video-overlay .el-icon {
   transition: transform 0.2s;
+}
+
+/* 视频播放弹窗 */
+.video-player-dialog :deep(.el-dialog__body) {
+  padding: 0;
+  background: #000;
+  border-radius: 0 0 8px 8px;
+}
+.video-player {
+  display: block;
+  width: 100%;
+  max-height: 80vh;
+  outline: none;
 }
 
 /* ===== 评分表单 ===== */
