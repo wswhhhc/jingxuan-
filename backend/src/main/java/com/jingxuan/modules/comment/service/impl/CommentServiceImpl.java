@@ -138,8 +138,10 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
         topComments.forEach(c -> { if (c.getUserId() != null) allUserIds.add(c.getUserId()); });
         allReplies.forEach(c -> { if (c.getUserId() != null) allUserIds.add(c.getUserId()); });
 
-        Map<Long, SysUser> userMap = sysUserMapper.selectBatchIds(allUserIds).stream()
-                .collect(Collectors.toMap(SysUser::getId, Function.identity(), (a, b) -> a));
+        Map<Long, SysUser> userMap = allUserIds.isEmpty()
+                ? Collections.emptyMap()
+                : sysUserMapper.selectBatchIds(allUserIds).stream()
+                    .collect(Collectors.toMap(SysUser::getId, Function.identity(), (a, b) -> a));
         Map<Long, String> roleNameMap = sysRoleMapper.selectList(null).stream()
                 .collect(Collectors.toMap(SysRole::getId, SysRole::getRoleName, (a, b) -> a));
 
@@ -215,12 +217,14 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
         List<WorkComment> parentComments = parentIds.isEmpty()
                 ? Collections.emptyList()
                 : baseMapper.selectBatchIds(parentIds);
-        parentComments.forEach(parent -> userIds.add(parent.getUserId()));
+        parentComments.forEach(parent -> { if (parent.getUserId() != null) userIds.add(parent.getUserId()); });
         Map<Long, WorkComment> parentCommentMap = parentComments.stream()
                 .collect(Collectors.toMap(WorkComment::getId, Function.identity(), (a, b) -> a));
 
-        Map<Long, SysUser> userMap = sysUserMapper.selectBatchIds(userIds).stream()
-                .collect(Collectors.toMap(SysUser::getId, Function.identity(), (a, b) -> a));
+        Map<Long, SysUser> userMap = userIds.isEmpty()
+                ? Collections.emptyMap()
+                : sysUserMapper.selectBatchIds(userIds).stream()
+                    .collect(Collectors.toMap(SysUser::getId, Function.identity(), (a, b) -> a));
         Map<Long, String> roleNameMap = sysRoleMapper.selectList(null).stream()
                 .collect(Collectors.toMap(SysRole::getId, SysRole::getRoleName, (a, b) -> a));
 
