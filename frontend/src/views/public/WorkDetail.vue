@@ -159,7 +159,7 @@
             :page-size="pageSize"
             :total="work.attachments.length"
             layout="prev, pager, next"
-            small
+            size="small"
           />
         </div>
         <p v-if="!work.attachments.length" class="text-muted">暂无附件资料</p>
