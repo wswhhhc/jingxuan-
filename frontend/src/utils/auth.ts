@@ -1,4 +1,4 @@
-import type { UserInfo } from '@/api/student/auth'
+import type { UserInfo } from '@/api/types'
 
 export function getAuthToken() {
   return sessionStorage.getItem('token') || localStorage.getItem('token') || ''

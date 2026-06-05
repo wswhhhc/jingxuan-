@@ -34,6 +34,9 @@ vi.mock('element-plus', async () => {
     ElMessage: {
       success: successMock,
     },
+    ElMessageBox: {
+      confirm: vi.fn().mockResolvedValue(true),
+    },
   }
 })
 

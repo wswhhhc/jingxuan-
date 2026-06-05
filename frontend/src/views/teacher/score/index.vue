@@ -326,6 +326,7 @@ import { getScoredWorkList } from '@/api/teacher/work'
 import { submitScore, getMyScore, getBatchList } from '@/api/teacher/score'
 import { getWorkDetail } from '@/api/teacher/work'
 import type { WorkDetailVO, WorkListVO } from '@/api/types'
+import { IMAGE_TYPES, VIDEO_TYPES, MEDIA_TYPES } from '@/api/types'
 
 // ===== 评分维度常量 =====
 const DIMENSIONS = [
@@ -400,9 +401,6 @@ const attachmentPage = ref(1)
 const PAGE_SIZE = 6
 const attachmentExpanded = ref(false)
 
-const IMAGE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp']
-const VIDEO_TYPES = ['mp4', 'avi', 'mov', 'mkv', 'webm']
-const MEDIA_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES]
 
 /** 媒体附件（图片+视频），用于画廊网格展示 */
 const mediaAttachments = computed(() => {

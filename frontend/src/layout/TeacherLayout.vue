@@ -80,9 +80,9 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { HomeFilled, Reading, EditPen, TrendCharts, Bell, ArrowDown } from '@element-plus/icons-vue'
-import { getUnreadCount } from '../api/teacher/notify'
+import { getUnreadCount } from '@/api/teacher/notify'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
-import type { UserInfo } from '@/api/student/auth'
+import type { UserInfo } from '@/api/types'
 import { clearAuthStorage, getCachedUserInfo } from '@/utils/auth'
 
 const route = useRoute()

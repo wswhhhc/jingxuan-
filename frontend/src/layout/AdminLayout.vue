@@ -92,7 +92,7 @@ import {
 } from '@element-plus/icons-vue'
 import request from '../api/request'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
-import type { UserInfo } from '@/api/student/auth'
+import type { UserInfo } from '@/api/types'
 import { clearAuthStorage, getCachedUserInfo } from '@/utils/auth'
 
 const route = useRoute()

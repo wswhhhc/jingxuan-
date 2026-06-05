@@ -137,9 +137,9 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { useAuthStore } from '../stores/student/auth'
-import { updateProfile, changePassword } from '../api/student/auth'
-import { uploadFile } from '../api/student/work'
+import { useAuthStore } from '@/stores/student/auth'
+import { updateProfile, changePassword } from '@/api/student/auth'
+import { uploadFile } from '@/api/student/work'
 
 const router = useRouter()
 const authStore = useAuthStore()

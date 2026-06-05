@@ -80,8 +80,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/student/auth'
-import { getUnreadCount } from '../api/student/notify'
+import { useAuthStore } from '@/stores/student/auth'
+import { getUnreadCount } from '@/api/student/notify'
 import { ArrowDown, HomeFilled, Plus, Document, Trophy, Bell } from '@element-plus/icons-vue'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 

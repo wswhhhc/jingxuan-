@@ -161,8 +161,8 @@
 import { computed, ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Picture, View, Star } from '@element-plus/icons-vue'
-import { getPublicWorkList, getPublicClassList, getPublicTagList, type PublicWorkListParams, type PublicClassItem, type TagItem } from '../../api/public/work'
-import type { WorkItem } from '../../api/student/work'
+import { getPublicWorkList, getPublicClassList, getPublicTagList, type PublicWorkListParams, type PublicClassItem, type TagItem } from '@/api/public/work'
+import type { WorkItem } from '@/api/student/work'
 
 const router = useRouter()
 const list = ref<WorkItem[]>([])

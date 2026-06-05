@@ -303,11 +303,12 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture, Files, Document, VideoCamera, StarFilled, View } from '@element-plus/icons-vue'
-import { getPublicWorkDetail, toggleLike } from '../../api/public/work'
-import { getCommentList, addComment, deleteComment } from '../../api/public/comment'
-import type { CommentItem } from '../../api/public/comment'
-import type { UserInfo } from '../../api/student/auth'
-import type { WorkItem } from '../../api/student/work'
+import { getPublicWorkDetail, toggleLike } from '@/api/public/work'
+import { getCommentList, addComment, deleteComment } from '@/api/public/comment'
+import type { CommentItem } from '@/api/public/comment'
+import type { UserInfo } from '@/api/student/auth'
+import type { WorkItem } from '@/api/student/work'
+import { IMAGE_TYPES } from '@/api/types'
 import { getCachedUserInfo, hasLoginToken } from '@/utils/auth'
 import CommentThread from './CommentThread.vue'
 
@@ -332,7 +333,6 @@ const attachmentPage = ref(1)
 const pageSize = 6
 const attachmentExpanded = ref(false)
 
-const IMAGE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp']
 
 const techTags = computed(() => work.value?.techStack?.split(',').map((t) => t.trim()).filter(Boolean) || [])
 const isLoggedIn = ref(hasLoginToken())

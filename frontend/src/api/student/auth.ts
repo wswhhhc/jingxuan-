@@ -1,4 +1,7 @@
 import request from '../request'
+import type { UserInfo } from '../types'
+
+export type { UserInfo }
 
 export interface LoginForm {
   username: string
@@ -6,30 +9,11 @@ export interface LoginForm {
   remember?: boolean
 }
 
-export interface UserInfo {
-  id: number
-  username: string
-  realName: string
-  roleId: number
-  roleCode: string
-  roleName: string
-  className: string
-  classId?: number
-  avatar?: string
-  email?: string
-  phone?: string
-  firstLogin?: boolean
-}
-
 export function login(data: LoginForm) {
-  return request({
-    url: '/auth/login',
-    method: 'post',
-    data: {
-      username: data.username,
-      password: data.password,
-      rememberMe: data.remember,
-    },
+  return request.post('/auth/login', {
+    username: data.username,
+    password: data.password,
+    rememberMe: data.remember,
   })
 }
 

@@ -134,8 +134,8 @@ import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { getMyWorks, deleteWork, type WorkItem } from '../../api/student/work'
-import { useAuthStore } from '../../stores/student/auth'
+import { getMyWorks, deleteWork, type WorkItem } from '@/api/student/work'
+import { useAuthStore } from '@/stores/student/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()

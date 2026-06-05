@@ -53,3 +53,24 @@ export interface WorkDetailVO {
     fileUrl: string
   }[]
 }
+
+/** 共享常量 */
+export const IMAGE_TYPES: readonly string[] = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+export const VIDEO_TYPES: readonly string[] = ['mp4', 'avi', 'mov', 'mkv', 'webm']
+export const MEDIA_TYPES: readonly string[] = [...IMAGE_TYPES, ...VIDEO_TYPES]
+
+/** 用户信息（登录后缓存，所有角色通用） */
+export interface UserInfo {
+  id: number
+  username: string
+  realName: string
+  roleId: number
+  roleCode: string
+  roleName: string
+  className: string
+  classId?: number
+  avatar?: string
+  email?: string
+  phone?: string
+  firstLogin?: boolean
+}

@@ -86,7 +86,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { CommentItem } from '../../api/public/comment'
+import type { CommentItem } from '@/api/public/comment'
 
 defineOptions({ name: 'CommentThread' })
 

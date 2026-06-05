@@ -1,16 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { login as loginApi, getUserInfo, type UserInfo } from '../../api/student/auth'
-import router from '../../router'
-
-function getCachedUserInfo(): UserInfo | null {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    return raw ? JSON.parse(raw) as UserInfo : null
-  } catch {
-    return null
-  }
-}
+import { login as loginApi, getUserInfo, type UserInfo } from '@/api/student/auth'
+import { getCachedUserInfo, clearAuthStorage } from '@/utils/auth'
+import router from '@/router'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(sessionStorage.getItem('token') || localStorage.getItem('token') || '')
@@ -27,7 +19,6 @@ export const useAuthStore = defineStore('auth', () => {
     sessionStorage.setItem('token', data.token)
 
     if (remember) {
-      // remember= true → localStorage 已写入，再加标记用于后续延长过期
       localStorage.setItem('remember', '1')
     }
 
@@ -43,10 +34,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = ''
     userInfo.value = null
-    localStorage.removeItem('token')
-    sessionStorage.removeItem('token')
-    localStorage.removeItem('remember')
-    localStorage.removeItem('userInfo')
+    clearAuthStorage()
     router.push('/login')
   }
 

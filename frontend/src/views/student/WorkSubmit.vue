@@ -171,8 +171,8 @@ import { Plus, Delete, Upload } from '@element-plus/icons-vue'
 import {
   createWork, updateWork, submitWork, getWorkDetail,
   uploadFile, type WorkForm, type WorkAttachment,
-} from '../../api/student/work'
-import request from '../../api/request'
+} from '@/api/student/work'
+import request from '@/api/request'
 
 const route = useRoute()
 const router = useRouter()

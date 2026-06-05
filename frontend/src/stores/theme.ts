@@ -5,17 +5,11 @@ export type ThemeMode = 'light' | 'dark'
 
 const STORAGE_KEY = 'jingxuan-theme'
 
-function canUseDOM() {
-  return typeof window !== 'undefined' && typeof document !== 'undefined'
-}
-
 function getSystemTheme(): ThemeMode {
-  if (!canUseDOM()) return 'light'
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 function applyTheme(mode: ThemeMode) {
-  if (!canUseDOM()) return
   document.documentElement.dataset.theme = mode
   document.documentElement.style.colorScheme = mode
 }
@@ -29,9 +23,7 @@ export const useThemeStore = defineStore('theme', () => {
   function setMode(next: ThemeMode) {
     mode.value = next
     applyTheme(next)
-    if (canUseDOM()) {
-      localStorage.setItem(STORAGE_KEY, next)
-    }
+    localStorage.setItem(STORAGE_KEY, next)
   }
 
   function toggleMode() {
@@ -39,7 +31,6 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function initTheme() {
-    if (!canUseDOM()) return
     if (ready.value) {
       applyTheme(mode.value)
       return
