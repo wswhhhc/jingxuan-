@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.jingxuan.common.PageResult;
 import com.jingxuan.entity.ScoreBatch;
 
+import java.util.List;
+
 public interface ScoreBatchService extends IService<ScoreBatch> {
 
     /**
@@ -30,6 +32,11 @@ public interface ScoreBatchService extends IService<ScoreBatch> {
      * 检查是否在评分有效期内
      */
     boolean isWithinScoringPeriod(Long batchId);
+
+    /**
+     * 获取当前学生可参与的进行中批次（classScopes 匹配该学生班级）
+     */
+    List<ScoreBatch> getAvailableBatchesForStudent(Long userId);
 
     /**
      * 删除评分批次（逻辑删除）

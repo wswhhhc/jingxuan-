@@ -38,6 +38,7 @@ export interface WorkForm {
   runDescription: string
   members: WorkMember[]
   attachments: WorkAttachment[]
+  batchId?: number | null
 }
 
 export interface WorkItem {
@@ -64,7 +65,6 @@ export interface WorkItem {
   featured?: number
   score?: number
   rank?: number
-  previewUrl?: string
   likeCount?: number
   viewCount?: number
   liked?: boolean
@@ -108,6 +108,7 @@ function toCreateRequest(form: WorkForm) {
     videoUrl: uploadedVideoUrl,
     previewUrl: form.previewUrl,
     runDesc: form.runDescription,
+    batchId: form.batchId || undefined,
     members: form.members.map((m) => ({
       studentName: m.studentName,
       studentNo: m.studentNo,

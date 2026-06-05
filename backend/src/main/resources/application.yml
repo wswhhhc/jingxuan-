@@ -22,6 +22,19 @@ spring:
           max-active: 16
           max-idle: 8
           min-idle: 4
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 
 mybatis-plus:
   type-aliases-package: com.jingxuan.entity
@@ -38,7 +51,7 @@ mybatis-plus:
 
 # Spring Security 忽略路径（无需认证）
 ignored:
-  paths: /auth/login,/api/auth/login,/auth/register,/swagger-ui/**,/v3/api-docs/**,/doc.html,/webjars/**,/favicon.ico,/uploads/**,/public/**,/comment/list/**
+  paths: /auth/login,/api/auth/login,/auth/register,/api/auth/register,/auth/send-code,/api/auth/send-code,/swagger-ui/**,/v3/api-docs/**,/doc.html,/webjars/**,/favicon.ico,/uploads/**,/public/**,/comment/list/**
 
 # JWT 配置
 jwt:

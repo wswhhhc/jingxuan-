@@ -71,6 +71,11 @@
                 {{ row.status === 1 ? '禁用' : '启用' }}
               </el-button>
               <el-button size="small" plain :disabled="isProtectedAdmin(row)" @click="handleResetPwd(row)">重置密码</el-button>
+              <el-popconfirm title="确认删除该用户？" @confirm="handleDelete(row)">
+                <template #reference>
+                  <el-button size="small" type="danger" plain :disabled="isProtectedAdmin(row)">删除</el-button>
+                </template>
+              </el-popconfirm>
             </div>
           </template>
         </el-table-column>
@@ -243,7 +248,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUsers, createUser, updateUser, updateStatus, getRoles, getClasses, batchImportUsers, parseAiImportUsers } from '@/api/admin/user'
+import { getUsers, createUser, updateUser, updateStatus, deleteUser, getRoles, getClasses, batchImportUsers, parseAiImportUsers } from '@/api/admin/user'
 import type { UserItem, RoleItem, ClassItem, AiImportMessage, AiImportUserDraft } from '@/api/admin/user'
 
 const loading = ref(false)
@@ -413,6 +418,16 @@ const handleResetPwd = (row: UserItem) => {
   pwdDialogVisible.value = true
 }
 
+const handleDelete = async (row: UserItem) => {
+  try {
+    await deleteUser(row.id)
+    ElMessage.success('删除成功')
+    loadList()
+  } catch {
+    // handled by interceptor
+  }
+}
+
 const handleSavePwd = async () => {
   const valid = await pwdFormRef.value?.validate().catch(() => false)
   if (!valid) return
@@ -554,7 +569,11 @@ const loadOptions = async () => {
   try {
     const [roleRes, classRes] = await Promise.all([getRoles(), getClasses()])
     roles.value = roleRes.data?.records || roleRes.data || []
-    classes.value = classRes.data || []
+    // 后端返回 SysDict { id, dictLabel, dictValue }，映射为前端所需的 className
+    classes.value = (classRes.data || []).map((item: any) => ({
+      id: item.id,
+      className: item.dictLabel
+    }))
   } catch {
     // fallback
   }

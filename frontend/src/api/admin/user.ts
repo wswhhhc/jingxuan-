@@ -97,6 +97,10 @@ export function updateStatus(id: number, status: number) {
   return request.put(`/admin/users/${id}/status`, null, { params: { status } })
 }
 
+export function deleteUser(id: number) {
+  return request.delete(`/admin/users/${id}`)
+}
+
 export function getRoles() {
   return request.get('/admin/roles')
 }

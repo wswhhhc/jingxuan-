@@ -2,9 +2,11 @@ package com.jingxuan.modules.adapter;
 
 import com.jingxuan.common.PageResult;
 import com.jingxuan.common.Result;
+import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.SysNotification;
 import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.score.dto.MyRankVO;
+import com.jingxuan.modules.scorebatch.service.ScoreBatchService;
 import com.jingxuan.modules.work.dto.WorkCreateRequest;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
 import com.jingxuan.modules.work.dto.WorkListVO;
@@ -35,6 +37,7 @@ public class StudentApiController {
     private final WorkService workService;
     private final StudentRankingFacade studentRankingFacade;
     private final NotificationService notificationService;
+    private final ScoreBatchService scoreBatchService;
 
     @Operation(summary = "创建作品")
     @PostMapping("/student/works")
@@ -85,6 +88,13 @@ public class StudentApiController {
     public Result<Void> submitWork(@PathVariable Long id) {
         workService.submitWork(id);
         return Result.ok();
+    }
+
+    @Operation(summary = "获取当前学生可参与的评分批次列表")
+    @GetMapping("/student/batch/available")
+    public Result<List<ScoreBatch>> getAvailableBatches() {
+        Long userId = SecurityUtils.requireCurrentUserId();
+        return Result.ok(scoreBatchService.getAvailableBatchesForStudent(userId));
     }
 
     @Operation(summary = "获取我的评分与排名（仅排行榜已公示时返回）")

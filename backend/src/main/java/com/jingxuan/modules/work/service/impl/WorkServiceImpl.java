@@ -2,12 +2,15 @@ package com.jingxuan.modules.work.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.common.PageResult;
 import com.jingxuan.entity.ScoreBatch;
+import com.jingxuan.entity.SysDict;
 import com.jingxuan.entity.SysUser;
 import com.jingxuan.entity.Work;
 import com.jingxuan.entity.WorkAttachment;
@@ -16,6 +19,7 @@ import com.jingxuan.entity.WorkPublish;
 import com.jingxuan.enums.AuditStatusEnum;
 import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.ScoreBatchMapper;
+import com.jingxuan.mapper.SysDictMapper;
 import com.jingxuan.mapper.SysUserMapper;
 import com.jingxuan.mapper.WorkAttachmentMapper;
 import com.jingxuan.mapper.WorkMapper;
@@ -40,6 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -60,6 +65,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     private final WorkAttachmentMapper workAttachmentMapper;
     private final WorkPublishMapper workPublishMapper;
     private final ScoreBatchMapper scoreBatchMapper;
+    private final SysDictMapper sysDictMapper;
     private final LogService logService;
     private final WorkContentReviewService workContentReviewService;
     private final WorkAttachmentBindingService workAttachmentBindingService;
@@ -72,28 +78,43 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     public Long createWork(WorkCreateRequest request) {
         Long currentUserId = SecurityUtils.requireCurrentUserId();
 
-        // 同一学生在当前活跃批次中只能提交一个作品
-        ScoreBatch activeBatch = scoreBatchMapper.selectOne(
-                Wrappers.<ScoreBatch>lambdaQuery()
-                        .eq(ScoreBatch::getStatus, 1)
-                        .orderByDesc(ScoreBatch::getCreateTime)
-                        .last("LIMIT 1"));
-        // 无论是否有活跃批次，都先回填已注册成员的 studentId（两者后续用途不同：studentId 用于成员识别与权限校验，批次唯一性校验仅在有活跃批次时执行）
+        // 优先使用前端传入的 batchId，否则自动匹配活跃批次
+        ScoreBatch targetBatch = null;
+        if (request.getBatchId() != null) {
+            targetBatch = scoreBatchMapper.selectById(request.getBatchId());
+            if (targetBatch == null) {
+                throw new BusinessException("所选评分批次不存在");
+            }
+            if (targetBatch.getStatus() != 1) {
+                throw new BusinessException("所选评分批次已结束");
+            }
+        } else {
+            targetBatch = scoreBatchMapper.selectOne(
+                    Wrappers.<ScoreBatch>lambdaQuery()
+                            .eq(ScoreBatch::getStatus, 1)
+                            .orderByDesc(ScoreBatch::getCreateTime)
+                            .last("LIMIT 1"));
+        }
+
+        // 无论是否有批次目标，都先回填已注册成员的 studentId
         if (CollectionUtil.isNotEmpty(request.getMembers())) {
             workMemberPolicyService.resolveMemberStudentIds(request.getMembers());
         }
 
-        if (activeBatch != null) {
+        if (targetBatch != null) {
+            // 校验提交者的班级是否在批次的适用范围（classScopes）内
+            validateClassInBatchScope(currentUserId, targetBatch);
+
             // 检查提交者是否已有作品在该批次中
             Long submitterCount = baseMapper.selectCount(
                     Wrappers.<Work>lambdaQuery()
                             .eq(Work::getSubmitterId, currentUserId)
-                            .eq(Work::getBatchId, activeBatch.getId()));
+                            .eq(Work::getBatchId, targetBatch.getId()));
             if (submitterCount > 0) {
                 throw new BusinessException("您在当前评分批次中已有作品，每个学生只能提交一个作品");
             }
             // 检查注册成员是否已在同一批次的其他作品中
-            workMemberPolicyService.ensureMembersAvailableInBatch(request.getMembers(), activeBatch.getId(), null);
+            workMemberPolicyService.ensureMembersAvailableInBatch(request.getMembers(), targetBatch.getId(), null);
         }
 
         // 内容安全审核：作品标题、简介、运行说明
@@ -109,8 +130,8 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         work.setRunDesc(request.getRunDesc());
         work.setStatus(AuditStatusEnum.DRAFT.getValue());
         work.setSubmitterId(currentUserId);
-        if (activeBatch != null) {
-            work.setBatchId(activeBatch.getId());
+        if (targetBatch != null) {
+            work.setBatchId(targetBatch.getId());
         }
         baseMapper.insert(work);
 
@@ -212,6 +233,9 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
                             .orderByDesc(ScoreBatch::getCreateTime)
                             .last("LIMIT 1"));
             if (activeBatch != null) {
+                // 校验提交者的班级是否在批次的适用范围（classScopes）内
+                validateClassInBatchScope(work.getSubmitterId(), activeBatch);
+
                 Long submitterCount = baseMapper.selectCount(
                         Wrappers.<Work>lambdaQuery()
                                 .eq(Work::getSubmitterId, work.getSubmitterId())
@@ -501,19 +525,10 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         List<WorkAttachment> attachments = workAttachmentMapper.selectList(
                 Wrappers.<WorkAttachment>lambdaQuery()
                         .eq(WorkAttachment::getWorkId, workId));
-        boolean hasSourceArchive = attachments.stream().anyMatch(attachment -> isSourceArchive(attachment.getFileType()));
         boolean hasVideo = attachments.stream().anyMatch(attachment -> "mp4".equals(normalizeFileType(attachment.getFileType())));
-        if (!hasSourceArchive) {
-            throw new BusinessException("提交审核前请上传源代码压缩包");
-        }
         if (!hasVideo) {
             throw new BusinessException("提交审核前请上传演示视频文件");
         }
-    }
-
-    private boolean isSourceArchive(String fileType) {
-        String normalized = normalizeFileType(fileType);
-        return "zip".equals(normalized) || "rar".equals(normalized) || "7z".equals(normalized);
     }
 
     private String normalizeFileType(String fileType) {
@@ -600,5 +615,67 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         dto.setClassName(member.getClassName());
         dto.setIsLeader(member.getIsLeader());
         return dto;
+    }
+
+    /**
+     * 校验当前学生用户的班级是否在评分批次的适用范围（classScopes）内
+     */
+    private void validateClassInBatchScope(Long userId, ScoreBatch batch) {
+        String classScopes = batch.getClassScopes();
+        if (StrUtil.isBlank(classScopes)) {
+            return; // 未设置范围，所有班级均可参与
+        }
+
+        // 全校范围标记，跳过校验
+        String trimmed = classScopes.trim();
+        if ("全校可参与".equals(trimmed) || "全校".equals(trimmed) || "all".equalsIgnoreCase(trimmed)) {
+            return;
+        }
+
+        // 获取当前用户的班级信息
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null || user.getClassId() == null) {
+            throw new BusinessException("您的账号未分配班级，无法参与当前评分批次");
+        }
+
+        // 查询班级字典值（classScopes 中存储的是 dict_value）
+        SysDict classDict = sysDictMapper.selectById(user.getClassId());
+        if (classDict == null || StrUtil.isBlank(classDict.getDictValue())) {
+            throw new BusinessException("您的班级信息异常，无法参与当前评分批次");
+        }
+        String userClassValue = classDict.getDictValue();
+
+        // 解析 classScopes：支持 JSON 数组格式 和 逗号分隔格式
+        List<String> scopeList = parseClassScopes(trimmed);
+        boolean matched = scopeList.stream().anyMatch(s -> s.equals(userClassValue));
+        if (!matched) {
+            throw new BusinessException("当前评分批次不包含您的班级（" + classDict.getDictLabel() + "），无法提交作品");
+        }
+    }
+
+    /**
+     * 解析 classScopes 字符串为班级值列表
+     * 支持 JSON 数组格式：["2022_soft_1","2022_soft_2"]
+     * 支持逗号分隔格式：2022_soft_1, 2022_soft_2
+     */
+    private List<String> parseClassScopes(String classScopes) {
+        String trimmed = classScopes.trim();
+        // 尝试以 JSON 数组解析
+        if (trimmed.startsWith("[")) {
+            try {
+                JSONArray jsonArray = JSONUtil.parseArray(trimmed);
+                return jsonArray.stream()
+                        .map(Object::toString)
+                        .filter(StrUtil::isNotBlank)
+                        .collect(Collectors.toList());
+            } catch (Exception ignored) {
+                // 非合法 JSON，降级为逗号解析
+            }
+        }
+        // 按逗号分隔（兼容中英文逗号）
+        return Arrays.stream(trimmed.split("[,，]"))
+                .map(String::trim)
+                .filter(StrUtil::isNotBlank)
+                .collect(Collectors.toList());
     }
 }

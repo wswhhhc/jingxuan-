@@ -27,4 +27,9 @@ public interface SysUserService extends IService<SysUser> {
      * 更新用户信息（含密码加密）
      */
     boolean updateUser(SysUser user);
+
+    /**
+     * 删除用户（逻辑删除）
+     */
+    boolean deleteUser(Long userId);
 }

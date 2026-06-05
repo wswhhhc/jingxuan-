@@ -93,12 +93,19 @@ public class RegistrationController {
         user.setStatus(UserStatusEnum.ENABLED);
         user.setFirstLogin(false);
 
-        // 解析 classId（新增）
-        Object classIdObj = body.get("classId");
-        if (classIdObj instanceof Number) {
-            user.setClassId(((Number) classIdObj).longValue());
-        } else if (classIdObj instanceof String && !((String) classIdObj).isEmpty()) {
-            user.setClassId(Long.valueOf((String) classIdObj));
+        // 校验并解析 classId（学生必选班级）
+        if (roleId == 1) {
+            Object classIdObj = body.get("classId");
+            Long classId = null;
+            if (classIdObj instanceof Number) {
+                classId = ((Number) classIdObj).longValue();
+            } else if (classIdObj instanceof String && !((String) classIdObj).isEmpty()) {
+                classId = Long.valueOf((String) classIdObj);
+            }
+            if (classId == null) {
+                return Result.error("学生注册请选择班级");
+            }
+            user.setClassId(classId);
         }
 
         try {

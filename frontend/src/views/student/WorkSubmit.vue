@@ -92,7 +92,7 @@
                 </el-button>
                 <template #tip>
                   <div class="el-upload__tip">
-                    支持 zip/rar/7z/jpg/png/gif/mp4/pdf，源码压缩包≤500MB，图片≤10MB，视频≤1.5GB
+                    支持 zip/rar/7z/jpg/png/gif/mp4/pdf，图片≤10MB，视频≤1.5GB
                   </div>
                 </template>
               </el-upload>
@@ -115,6 +115,18 @@
 
         <section class="workspace-form-section">
           <div class="workspace-form-section__header">
+            <h3 class="workspace-form-section__title">评分批次</h3>
+            <p class="workspace-form-section__desc">选择本次作品参与的评分批次，只有班级适用范围内的批次可选。</p>
+          </div>
+          <el-form-item label="选择批次">
+            <el-select v-model="form.batchId" placeholder="请选择批次（不选则自动匹配）" clearable style="width:100%">
+              <el-option v-for="b in availableBatches" :key="b.id" :label="b.batchName" :value="b.id" />
+            </el-select>
+          </el-form-item>
+        </section>
+
+        <section class="workspace-form-section">
+          <div class="workspace-form-section__header">
             <h3 class="workspace-form-section__title">团队成员</h3>
             <p class="workspace-form-section__desc">明确主创与成员信息，保持提交名单与展示信息的一致性。</p>
           </div>
@@ -128,7 +140,6 @@
                 </el-select>
                 <el-input v-model="member.studentName" placeholder="姓名" class="member-input" />
                 <el-input v-model="member.studentNo" placeholder="学号" class="member-input" />
-                <el-input v-model="member.className" placeholder="班级" class="member-input" />
                 <el-button v-if="!isView" type="danger" :icon="Delete" circle @click="removeMember(idx)" />
               </div>
               <el-button v-if="!isView" type="primary" plain @click="addMember">
@@ -161,6 +172,7 @@ import {
   createWork, updateWork, submitWork, getWorkDetail,
   uploadFile, type WorkForm, type WorkAttachment,
 } from '../../api/student/work'
+import request from '../../api/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -168,6 +180,7 @@ const formRef = ref()
 const submitting = ref(false)
 const saving = ref(false)
 const fileList = ref<any[]>([])
+const availableBatches = ref<{ id: number; batchName: string }[]>([])
 const _pendingUploadNames = new Set<string>()
 const hasWorkId = computed(() => Boolean(getRouteWorkId()))
 const isEdit = computed(() => route.name === 'WorkEdit' || (hasWorkId.value && route.name !== 'WorkView'))
@@ -186,6 +199,7 @@ const form = reactive<WorkForm>({
   videoUrl: '',
   previewUrl: '',
   runDescription: '',
+  batchId: null,
   attachments: [],
   members: [{
     studentName: '',
@@ -239,6 +253,18 @@ function getRouteWorkId() {
   return typeof id === 'string' ? id : Array.isArray(id) ? id[0] : ''
 }
 
+async function loadAvailableBatches() {
+  try {
+    const res = await request.get('/student/batch/available')
+    availableBatches.value = (res.data || []).map((b: any) => ({
+      id: b.id,
+      batchName: b.batchName,
+    }))
+  } catch {
+    availableBatches.value = []
+  }
+}
+
 async function loadWork(id: string | number) {
   try {
     const res = await getWorkDetail(id)
@@ -252,6 +278,7 @@ async function loadWork(id: string | number) {
       videoUrl: resolveUploadedVideoUrl(data.attachments) || data.videoUrl || '',
       previewUrl: data.previewUrl || '',
       runDescription: data.runDescription,
+      batchId: data.batchId || null,
       members: data.members?.length ? data.members : form.members,
     })
     // 后端返回的附件仅用于初始化（如已有附件则不覆盖已上传的）
@@ -270,6 +297,7 @@ async function loadWork(id: string | number) {
 }
 
 onMounted(() => {
+  loadAvailableBatches()
   const workId = getRouteWorkId()
   if (workId) {
     loadWork(workId)
@@ -381,10 +409,6 @@ function buildSubmitData(): WorkForm {
   }
 }
 
-function hasSourceArchive() {
-  return form.attachments.some((file) => ['zip', 'rar', '7z'].includes(file.fileType?.toLowerCase?.() || ''))
-}
-
 function hasVideoFile() {
   return form.attachments.some((file) => file.fileType?.toLowerCase?.() === 'mp4')
 }
@@ -421,10 +445,6 @@ async function handleSaveDraft() {
 async function handleSaveAndSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
-  if (!hasSourceArchive()) {
-    ElMessage.error('提交审核前请上传源代码压缩包')
-    return
-  }
   if (!hasVideoFile()) {
     ElMessage.error('提交审核前请上传演示视频文件')
     return

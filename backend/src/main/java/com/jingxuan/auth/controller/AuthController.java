@@ -4,6 +4,7 @@ import com.jingxuan.auth.model.LoginRequest;
 import com.jingxuan.auth.model.LoginResponse;
 import com.jingxuan.auth.model.UserInfoVO;
 import com.jingxuan.auth.service.AuthService;
+import com.jingxuan.auth.service.RegistrationService;
 import com.jingxuan.common.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final RegistrationService registrationService;
 
     @Operation(summary = "检查当前用户是否需要修改密码（首次登录）")
     @GetMapping("/check-first-login")
@@ -37,6 +39,19 @@ public class AuthController {
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return Result.ok("登录成功", response);
+    }
+
+    @Operation(summary = "发送注册邮箱验证码")
+    @PostMapping("/send-code")
+    public Result<Void> sendRegisterCode(@RequestBody Map<String, Object> body) {
+        registrationService.sendVerificationCode(body);
+        return Result.ok();
+    }
+
+    @Operation(summary = "邮箱验证码注册")
+    @PostMapping("/register")
+    public Result<Map<String, Object>> register(@RequestBody Map<String, Object> body) {
+        return Result.ok("注册成功", registrationService.register(body));
     }
 
     @Operation(summary = "获取当前用户信息（兼容前端 /auth/user-info）")

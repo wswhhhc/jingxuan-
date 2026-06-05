@@ -42,4 +42,7 @@ public class WorkCreateRequest {
 
     @Schema(description = "附件ID列表（已上传的附件ID）")
     private List<String> attachmentIds;
+
+    @Schema(description = "评分批次ID（不传则自动匹配当前活跃批次）")
+    private Long batchId;
 }

@@ -74,4 +74,15 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw new BusinessException("系统管理员不允许修改");
         }
     }
+
+    @Override
+    public boolean deleteUser(Long userId) {
+        SysUser user = getById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        ensureMutableUser(user);
+        // 逻辑删除（基于 BaseEntity @TableLogic 注解）
+        return removeById(userId);
+    }
 }

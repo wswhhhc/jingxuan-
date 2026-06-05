@@ -49,6 +49,8 @@ public class SecurityConfig {
                             "/webjars/**", "/favicon.ico").permitAll()
                     // 认证接口（兼容前端 /api 代理）
                     .requestMatchers("/auth/login", "/api/auth/login").permitAll()
+                    .requestMatchers("/auth/register", "/api/auth/register").permitAll()
+                    .requestMatchers("/auth/send-code", "/api/auth/send-code").permitAll()
                     // 静态资源
                     .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                     // 前台公开展示接口

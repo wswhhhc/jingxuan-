@@ -46,6 +46,7 @@ class WorkServiceImplTest {
     @Mock private WorkAttachmentMapper workAttachmentMapper;
     @Mock private WorkPublishMapper workPublishMapper;
     @Mock private ScoreBatchMapper scoreBatchMapper;
+    @Mock private SysDictMapper sysDictMapper;
     @Mock private LogService logService;
     @Mock private DeepSeekReviewService deepSeekReviewService;
 
@@ -66,7 +67,7 @@ class WorkServiceImplTest {
         WorkQueryValidator queryValidator = new WorkQueryValidator();
 
         workService = new WorkServiceImpl(sysUserMapper, workMemberService, workMemberMapper,
-                workAttachmentMapper, workPublishMapper, scoreBatchMapper, logService,
+                workAttachmentMapper, workPublishMapper, scoreBatchMapper, sysDictMapper, logService,
                 contentReviewService, attachmentBindingService, memberPolicyService, queryValidator);
         // baseMapper（从 ServiceImpl 继承）
         ReflectionTestUtils.setField(workService, "baseMapper", workMapper);

@@ -5,6 +5,8 @@ import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.Work;
 import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.ScoreBatchMapper;
+import com.jingxuan.mapper.SysDictMapper;
+import com.jingxuan.mapper.SysUserMapper;
 import com.jingxuan.mapper.WorkMapper;
 import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.rank.service.RankService;
@@ -26,14 +28,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.jingxuan.entity.ScoreBatch;
-
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ScoreBatchServiceImpl - 评分批次服务")
 class ScoreBatchServiceImplTest {
 
     @Mock private ScoreBatchMapper scoreBatchMapper;
     @Mock private WorkMapper workMapper;
+    @Mock private SysUserMapper sysUserMapper;
+    @Mock private SysDictMapper sysDictMapper;
     @Mock private NotificationService notificationService;
     @Mock private RankService rankService;
 
@@ -45,7 +47,7 @@ class ScoreBatchServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        scoreBatchService = new ScoreBatchServiceImpl(workMapper, notificationService, rankService);
+        scoreBatchService = new ScoreBatchServiceImpl(workMapper, sysUserMapper, sysDictMapper, notificationService, rankService);
         ReflectionTestUtils.setField(scoreBatchService, "baseMapper", scoreBatchMapper);
     }
 

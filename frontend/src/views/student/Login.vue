@@ -64,6 +64,10 @@
                 登 录
               </el-button>
             </el-form-item>
+            <div class="login-panel__register">
+              <span>还没有账号？</span>
+              <router-link to="/register" class="register-now">立即注册</router-link>
+            </div>
           </el-form>
         </div>
       </section>
@@ -260,6 +264,26 @@ async function handleLogin() {
 
 .login-btn {
   width: 100%;
+}
+
+.login-panel__register {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: -8px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.register-now {
+  color: var(--el-color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.register-now:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 960px) {

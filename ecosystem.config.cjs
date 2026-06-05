@@ -4,7 +4,7 @@ module.exports = {
       name: 'jingxuan-back',
       cwd: '/opt/jingxuan',
       script: 'java',
-      args: '-Xmx256m -Xms128m -XX:+UseSerialGC -XX:MaxMetaspaceSize=96m -XX:+UseStringDeduplication -jar backend/jingxuan-backend-1.0.0.jar --spring.profiles.active=prod --spring.main.lazy-initialization=true',
+      args: '-Xmx2g -Xms1g -XX:+UseG1GC -XX:MaxMetaspaceSize=256m -XX:+UseStringDeduplication -XX:MaxGCPauseMillis=200 -jar backend/jingxuan-backend-1.0.0.jar --spring.profiles.active=prod --server.tomcat.threads.max=400 --server.tomcat.accept-count=100',
       env: {
         NODE_ENV: 'production'
       }

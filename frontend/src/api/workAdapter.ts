@@ -84,7 +84,7 @@ export function adaptWorkVO(item: any) {
     featured: item.featured,
     score: item.avgScore != null ? Number(item.avgScore) : undefined,
     rank: item.rank,
-    previewUrl: item.previewUrl,
+    previewUrl: item.previewUrl || '',
     likeCount: item.likeCount ?? 0,
     viewCount: item.viewCount ?? 0,
     liked: item.liked ?? false,

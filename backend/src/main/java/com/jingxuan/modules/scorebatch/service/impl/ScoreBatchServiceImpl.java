@@ -1,13 +1,20 @@
 package com.jingxuan.modules.scorebatch.service.impl;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.common.PageResult;
 import com.jingxuan.entity.ScoreBatch;
+import com.jingxuan.entity.SysDict;
+import com.jingxuan.entity.SysUser;
 import com.jingxuan.entity.Work;
 import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.ScoreBatchMapper;
+import com.jingxuan.mapper.SysDictMapper;
+import com.jingxuan.mapper.SysUserMapper;
 import com.jingxuan.mapper.WorkMapper;
 import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.rank.service.RankService;
@@ -18,7 +25,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 评分批次 服务实现类
@@ -29,6 +39,8 @@ import java.util.List;
 public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBatch> implements ScoreBatchService {
 
     private final WorkMapper workMapper;
+    private final SysUserMapper sysUserMapper;
+    private final SysDictMapper sysDictMapper;
     private final NotificationService notificationService;
     private final RankService rankService;
 
@@ -79,6 +91,61 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
                 .orderByDesc(ScoreBatch::getCreateTime)
                 .last("LIMIT 1")
                 .one();
+    }
+
+    @Override
+    public List<ScoreBatch> getAvailableBatchesForStudent(Long userId) {
+        // 获取当前学生的班级 dict_value
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null || user.getClassId() == null) {
+            return Collections.emptyList();
+        }
+        SysDict classDict = sysDictMapper.selectById(user.getClassId());
+        if (classDict == null || StrUtil.isBlank(classDict.getDictValue())) {
+            return Collections.emptyList();
+        }
+        String userClassValue = classDict.getDictValue();
+
+        // 查询所有进行中的批次（status=1）
+        List<ScoreBatch> activeBatches = lambdaQuery()
+                .eq(ScoreBatch::getStatus, 1)
+                .orderByDesc(ScoreBatch::getCreateTime)
+                .list();
+
+        // 过滤出该学生班级可参与的批次
+        return activeBatches.stream()
+                .filter(batch -> isClassInScope(userClassValue, batch.getClassScopes()))
+                .collect(Collectors.toList());
+    }
+
+    private boolean isClassInScope(String userClassValue, String classScopes) {
+        if (StrUtil.isBlank(classScopes)) {
+            return true; // 未设置范围则所有班级可参与
+        }
+        String trimmed = classScopes.trim();
+        if ("全校可参与".equals(trimmed) || "全校".equals(trimmed) || "all".equalsIgnoreCase(trimmed)) {
+            return true;
+        }
+        List<String> scopeList = parseClassScopes(trimmed);
+        return scopeList.stream().anyMatch(s -> s.equals(userClassValue));
+    }
+
+    private List<String> parseClassScopes(String classScopes) {
+        String trimmed = classScopes.trim();
+        if (trimmed.startsWith("[")) {
+            try {
+                JSONArray jsonArray = JSONUtil.parseArray(trimmed);
+                return jsonArray.stream()
+                        .map(Object::toString)
+                        .filter(StrUtil::isNotBlank)
+                        .collect(Collectors.toList());
+            } catch (Exception ignored) {
+            }
+        }
+        return Arrays.stream(trimmed.split("[,，]"))
+                .map(String::trim)
+                .filter(StrUtil::isNotBlank)
+                .collect(Collectors.toList());
     }
 
     @Override

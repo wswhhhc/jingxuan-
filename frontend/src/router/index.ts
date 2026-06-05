@@ -11,6 +11,12 @@ const routes = [
   ...adminRoutes,
   ...teacherRoutes,
   {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../views/Register.vue'),
+    meta: { title: '注册', noAuth: true },
+  },
+  {
     path: '/change-password',
     name: 'ChangePassword',
     component: () => import('../views/ChangePassword.vue'),

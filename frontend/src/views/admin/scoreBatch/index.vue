@@ -87,7 +87,7 @@
                 v-for="item in classes"
                 :key="item.id"
                 :label="item.dictLabel"
-                :value="item.dictLabel"
+                :value="item.dictValue"
               />
             </el-select>
             <div class="scope-field__hint">
@@ -176,7 +176,7 @@ const submitting = ref(false)
 const isEdit = ref(false)
 const detail = ref<ScoreBatchItem | null>(null)
 const formRef = ref<any>(null)
-const classes = ref<{ id: number; dictLabel: string }[]>([])
+const classes = ref<{ id: number; dictLabel: string; dictValue: string }[]>([])
 
 const form = reactive({
   batchName: '',

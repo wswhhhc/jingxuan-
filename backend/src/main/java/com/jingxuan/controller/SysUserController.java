@@ -102,6 +102,14 @@ public class SysUserController {
         return Result.ok();
     }
 
+    @Operation(summary = "删除用户（逻辑删除）")
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Result<Void> delete(@PathVariable Long id) {
+        sysUserService.deleteUser(id);
+        return Result.ok();
+    }
+
     @Operation(summary = "用户详情")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

@@ -43,3 +43,4 @@ yarn-error.log*
 frontend/dist/assets/*.bak
 frontend/dist/assets/*.conflicted
 frontend/dist/assets/*.gz
+deploy/
