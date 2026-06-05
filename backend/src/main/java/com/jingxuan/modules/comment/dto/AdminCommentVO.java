@@ -18,8 +18,11 @@ public class AdminCommentVO {
     @Schema(description = "作品标题")
     private String workTitle;
 
-    @Schema(description = "评论用户ID")
+    @Schema(description = "评论用户ID（游客为null）")
     private Long userId;
+
+    @Schema(description = "游客昵称")
+    private String guestName;
 
     @Schema(description = "评论者姓名")
     private String userName;

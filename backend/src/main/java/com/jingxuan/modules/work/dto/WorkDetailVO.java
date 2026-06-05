@@ -76,6 +76,24 @@ public class WorkDetailVO {
     @Schema(description = "平均分（审核通过且有评分时）")
     private String avgScore;
 
+    @Schema(description = "排名（有评分时）")
+    private Integer rank;
+
+    @Schema(description = "平均创新性")
+    private String avgInnovation;
+
+    @Schema(description = "平均技术难度")
+    private String avgDifficulty;
+
+    @Schema(description = "平均完成度")
+    private String avgCompletion;
+
+    @Schema(description = "平均实用性")
+    private String avgPracticality;
+
+    @Schema(description = "评分教师数")
+    private Integer teacherCount;
+
     @Schema(description = "点赞数")
     private Integer likeCount;
 

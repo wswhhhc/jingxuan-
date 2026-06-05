@@ -25,9 +25,10 @@ public class CommentController {
     @PostMapping("/add")
     public Result<Long> add(@RequestParam Long workId,
                             @RequestParam String content,
-                            @RequestParam(required = false) Long parentId) {
-        Long userId = SecurityUtils.requireCurrentUserId();
-        Long commentId = commentService.addComment(workId, userId, content, parentId);
+                            @RequestParam(required = false) Long parentId,
+                            @RequestParam(required = false) String guestName) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Long commentId = commentService.addComment(workId, userId, content, parentId, guestName);
         return Result.ok(commentId);
     }
 

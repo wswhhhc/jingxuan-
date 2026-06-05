@@ -95,4 +95,20 @@
         ORDER BY name
     </select>
 
+    <!-- 查询作品在同批次中的排名 -->
+    <select id="selectWorkRank" resultType="java.lang.Integer">
+        SELECT COUNT(*) + 1
+        FROM (
+            SELECT w.id
+            FROM work w
+            INNER JOIN work_score ws ON w.id = ws.work_id AND ws.deleted = 0
+            WHERE w.deleted = 0 AND w.status = 3 AND w.batch_id = #{batchId}
+            GROUP BY w.id
+            HAVING AVG(ws.total) > (
+                SELECT AVG(ws2.total) FROM work_score ws2
+                WHERE ws2.work_id = #{workId} AND ws2.deleted = 0
+            )
+        ) t
+    </select>
+
 </mapper>

@@ -30,7 +30,8 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return !(path.startsWith("/public/") || path.startsWith("/comment/list/"));
+        return !(path.startsWith("/public/") || path.startsWith("/comment/list/")
+                || path.equals("/comment/add") || path.equals("/api/comment/add"));
     }
 
     @Override

@@ -47,7 +47,7 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long addComment(Long workId, Long userId, String content, Long parentId) {
+    public Long addComment(Long workId, Long userId, String content, Long parentId, String guestName) {
         DeepSeekReviewService.ReviewResult review = deepSeekReviewService.review(content, "comment");
         if (!review.isPassed()) {
             throw new BusinessException("评论内容违规：" + review.getReason());
@@ -77,6 +77,7 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
         WorkComment comment = new WorkComment();
         comment.setWorkId(workId);
         comment.setUserId(userId);
+        comment.setGuestName(userId == null ? guestName : null);
         comment.setContent(content);
         comment.setParentId(parentId);
         baseMapper.insert(comment);
@@ -84,10 +85,15 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
         if (parentId != null) {
             WorkComment parent = baseMapper.selectById(parentId);
             if (parent != null && parent.getUserId() != null && !Objects.equals(parent.getUserId(), userId)) {
-                SysUser replier = sysUserMapper.selectById(userId);
-                String replierName = replier != null && replier.getRealName() != null && !replier.getRealName().isBlank()
-                        ? replier.getRealName()
-                        : "有人";
+                String replierName;
+                if (userId != null) {
+                    SysUser replier = sysUserMapper.selectById(userId);
+                    replierName = replier != null && replier.getRealName() != null && !replier.getRealName().isBlank()
+                            ? replier.getRealName()
+                            : "有人";
+                } else {
+                    replierName = (guestName != null && !guestName.isBlank()) ? guestName : "游客";
+                }
                 notificationService.sendNotification(
                         parent.getUserId(),
                         "评论收到回复",
@@ -129,8 +135,8 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
 
         // 3. 批量查询用户信息
         Set<Long> allUserIds = new HashSet<>();
-        topComments.forEach(c -> allUserIds.add(c.getUserId()));
-        allReplies.forEach(c -> allUserIds.add(c.getUserId()));
+        topComments.forEach(c -> { if (c.getUserId() != null) allUserIds.add(c.getUserId()); });
+        allReplies.forEach(c -> { if (c.getUserId() != null) allUserIds.add(c.getUserId()); });
 
         Map<Long, SysUser> userMap = sysUserMapper.selectBatchIds(allUserIds).stream()
                 .collect(Collectors.toMap(SysUser::getId, Function.identity(), (a, b) -> a));
@@ -194,7 +200,10 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
         }
 
         Set<Long> workIds = comments.stream().map(WorkComment::getWorkId).collect(Collectors.toSet());
-        Set<Long> userIds = comments.stream().map(WorkComment::getUserId).collect(Collectors.toSet());
+        Set<Long> userIds = comments.stream()
+                .map(WorkComment::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         Set<Long> parentIds = comments.stream()
                 .map(WorkComment::getParentId)
                 .filter(Objects::nonNull)
@@ -222,6 +231,7 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
             vo.setContent(comment.getContent());
             vo.setParentId(comment.getParentId());
             vo.setUserId(comment.getUserId());
+            vo.setGuestName(comment.getGuestName());
             vo.setCreateTime(comment.getCreateTime());
 
             Work work = workMap.get(comment.getWorkId());
@@ -229,20 +239,31 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
                 vo.setWorkTitle(work.getTitle());
             }
 
-            SysUser user = userMap.get(comment.getUserId());
-            if (user != null) {
-                vo.setUserName(user.getRealName());
-                if (user.getRoleId() != null) {
-                    vo.setRoleName(roleNameMap.getOrDefault(user.getRoleId().longValue(), ""));
+            if (comment.getUserId() != null) {
+                SysUser user = userMap.get(comment.getUserId());
+                if (user != null) {
+                    vo.setUserName(user.getRealName());
+                    if (user.getRoleId() != null) {
+                        vo.setRoleName(roleNameMap.getOrDefault(user.getRoleId().longValue(), ""));
+                    }
                 }
+            } else {
+                vo.setUserName(comment.getGuestName() != null && !comment.getGuestName().isBlank()
+                        ? comment.getGuestName() + "·游客" : "游客");
+                vo.setRoleName("游客");
             }
 
             if (comment.getParentId() != null) {
                 WorkComment parent = parentCommentMap.get(comment.getParentId());
                 if (parent != null) {
-                    SysUser replyToUser = userMap.get(parent.getUserId());
-                    if (replyToUser != null) {
-                        vo.setReplyToUserName(replyToUser.getRealName());
+                    if (parent.getUserId() != null) {
+                        SysUser replyToUser = userMap.get(parent.getUserId());
+                        if (replyToUser != null) {
+                            vo.setReplyToUserName(replyToUser.getRealName());
+                        }
+                    } else {
+                        vo.setReplyToUserName(parent.getGuestName() != null && !parent.getGuestName().isBlank()
+                                ? parent.getGuestName() + "·游客" : "游客");
                     }
                 }
             }
@@ -302,20 +323,31 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
         vo.setId(c.getId());
         vo.setWorkId(c.getWorkId());
         vo.setUserId(c.getUserId());
+        vo.setGuestName(c.getGuestName());
         vo.setContent(c.getContent());
         vo.setParentId(c.getParentId());
         vo.setCreateTime(c.getCreateTime());
-        SysUser user = userMap.get(c.getUserId());
-        if (user != null) {
-            vo.setUserName(user.getRealName());
-            vo.setRoleName(user.getRoleId() != null ? roleNameMap.getOrDefault(user.getRoleId().longValue(), "") : "");
+        if (c.getUserId() != null) {
+            SysUser user = userMap.get(c.getUserId());
+            if (user != null) {
+                vo.setUserName(user.getRealName());
+                vo.setRoleName(user.getRoleId() != null ? roleNameMap.getOrDefault(user.getRoleId().longValue(), "") : "");
+            }
+        } else {
+            vo.setUserName(c.getGuestName() != null && !c.getGuestName().isBlank() ? c.getGuestName() + "·游客" : "游客");
+            vo.setRoleName("游客");
         }
         if (c.getParentId() != null) {
             WorkComment parent = commentMap.get(c.getParentId());
             if (parent != null) {
-                SysUser replyToUser = userMap.get(parent.getUserId());
-                if (replyToUser != null) {
-                    vo.setReplyToUserName(replyToUser.getRealName());
+                if (parent.getUserId() != null) {
+                    SysUser replyToUser = userMap.get(parent.getUserId());
+                    if (replyToUser != null) {
+                        vo.setReplyToUserName(replyToUser.getRealName());
+                    }
+                } else {
+                    vo.setReplyToUserName(parent.getGuestName() != null && !parent.getGuestName().isBlank()
+                            ? parent.getGuestName() + "·游客" : "游客");
                 }
             }
         }

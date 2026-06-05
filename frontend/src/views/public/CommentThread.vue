@@ -17,22 +17,28 @@
           <span>{{ comment.content }}</span>
         </div>
         <div class="comment-actions">
-          <template v-if="isLoggedIn">
-            <el-button link size="small" @click="emit('openReply', comment.id, displayName)">回复</el-button>
-            <el-button
-              v-if="showDelete"
-              link
-              size="small"
-              type="danger"
-              @click="emit('deleteComment', comment.id)"
-            >
-              删除
-            </el-button>
-          </template>
-          <el-button v-else link size="small" type="primary" @click="emit('goToLogin')">登录后可回复</el-button>
+          <el-button link size="small" @click="emit('openReply', comment.id, displayName)">回复</el-button>
+          <el-button
+            v-if="showDelete"
+            link
+            size="small"
+            type="danger"
+            @click="emit('deleteComment', comment.id)"
+          >
+            删除
+          </el-button>
         </div>
         <!-- 回复输入框 -->
-        <div v-if="isLoggedIn && replyTargetId === comment.id" class="reply-input-box">
+        <div v-if="replyTargetId === comment.id" class="reply-input-box">
+          <div v-if="!isLoggedIn" class="reply-guest-name">
+            <el-input
+              v-model="localGuestName"
+              placeholder="你的昵称（选填）"
+              maxlength="20"
+              size="small"
+              clearable
+            />
+          </div>
           <el-input
             v-model="localReplyText"
             type="textarea"
@@ -99,19 +105,25 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'openReply', id: string | number, userName: string): void
   (e: 'cancelReply'): void
-  (e: 'submitReply', parentId: string | number, content: string): void
+  (e: 'submitReply', parentId: string | number, content: string, guestName?: string): void
   (e: 'deleteComment', id: string | number): void
   (e: 'goToLogin'): void
 }>()
 
 const localReplyText = ref('')
+const localGuestName = ref('')
 const repliesExpanded = ref(false)
 
 const displayName = computed(() => props.comment.userName || '匿名用户')
 const currentDepth = computed(() => props.depth ?? 0)
 const showDelete = computed(() => {
+  const commentUserId = props.comment.userId
+  // 游客评论（userId 为 null/undefined）仅管理员可删
+  if (commentUserId === null || commentUserId === undefined) {
+    return props.isLoggedIn && props.isAdmin
+  }
   if (!props.isLoggedIn || props.currentUserId == null) return false
-  return props.comment.userId === props.currentUserId || props.isAdmin || props.isWorkLeader
+  return commentUserId === props.currentUserId || props.isAdmin || props.isWorkLeader
 })
 const replyPlaceholder = computed(() => {
   return props.replyTargetName ? `回复给 ${props.replyTargetName}...` : '回复评论...'
@@ -119,17 +131,19 @@ const replyPlaceholder = computed(() => {
 
 watch(() => props.replyTargetId, () => {
   localReplyText.value = ''
+  localGuestName.value = ''
 })
 
-function forwardSubmitReply(parentId: string | number, content: string) {
-  emit('submitReply', parentId, content)
+function forwardSubmitReply(parentId: string | number, content: string, guestName?: string) {
+  emit('submitReply', parentId, content, guestName)
 }
 
 function handleSubmitReply() {
   const text = localReplyText.value.trim()
   if (!text) return
-  emit('submitReply', props.comment.id, text)
+  emit('submitReply', props.comment.id, text, localGuestName.value.trim() || undefined)
   localReplyText.value = ''
+  localGuestName.value = ''
 }
 
 function toggleReplies() {
@@ -164,6 +178,7 @@ function formatTime(iso: string): string {
 .reply-to { color: var(--brand); margin-right: 4px; }
 .comment-actions { margin-top: 8px; }
 .reply-input-box { margin-top: 12px; }
+.reply-guest-name { margin-bottom: 8px; max-width: 240px; }
 .reply-actions { margin-top: 8px; display: flex; gap: 8px; }
 .reply-toggle { margin-top: 4px; padding-left: 48px; }
 .replies-container {

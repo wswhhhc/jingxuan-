@@ -65,6 +65,11 @@ export interface WorkItem {
   featured?: number
   score?: number
   rank?: number
+  avgInnovation?: string
+  avgDifficulty?: string
+  avgCompletion?: string
+  avgPracticality?: string
+  teacherCount?: number
   likeCount?: number
   viewCount?: number
   liked?: boolean

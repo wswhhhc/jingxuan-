@@ -399,13 +399,21 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
             vo.setFeatured(publish.getFeatured());
         }
 
-        // 平均分（仅排行榜已公示时显示）
+        // 平均分（有评分时直接显示）
         if (work.getBatchId() != null) {
             ScoreBatch batch = scoreBatchMapper.selectById(work.getBatchId());
-            if (batch != null && Integer.valueOf(1).equals(batch.getRankPublished())) {
+            if (batch != null) {
                 var scoreSummary = scoreService.getScoreSummary(id);
                 if (scoreSummary != null) {
                     vo.setAvgScore(scoreSummary.getAvgTotal().toString());
+                    vo.setAvgInnovation(scoreSummary.getAvgInnovation() != null ? scoreSummary.getAvgInnovation().toString() : null);
+                    vo.setAvgDifficulty(scoreSummary.getAvgDifficulty() != null ? scoreSummary.getAvgDifficulty().toString() : null);
+                    vo.setAvgCompletion(scoreSummary.getAvgCompletion() != null ? scoreSummary.getAvgCompletion().toString() : null);
+                    vo.setAvgPracticality(scoreSummary.getAvgPracticality() != null ? scoreSummary.getAvgPracticality().toString() : null);
+                    vo.setTeacherCount(scoreSummary.getTeacherCount());
+                    // 排名
+                    Integer rank = baseMapper.selectWorkRank(work.getBatchId(), id);
+                    vo.setRank(rank);
                 }
             }
         }

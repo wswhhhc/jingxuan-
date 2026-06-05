@@ -55,8 +55,8 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                     // 前台公开展示接口
                     .requestMatchers("/public/**").permitAll()
-                    // 公共评论列表
-                    .requestMatchers(HttpMethod.GET, "/comment/list/**").permitAll()
+                    // 公共评论列表及游客评论
+                    .requestMatchers("/comment/**", "/api/comment/**").permitAll()
                     // 其它接口需认证
                     .anyRequest().authenticated()
             )

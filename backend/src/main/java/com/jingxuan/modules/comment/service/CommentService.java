@@ -11,7 +11,7 @@ public interface CommentService extends IService<WorkComment> {
     /**
      * 发表评论
      */
-    Long addComment(Long workId, Long userId, String content, Long parentId);
+    Long addComment(Long workId, Long userId, String content, Long parentId, String guestName);
 
     /**
      * 删除评论（包含其所有子回复）

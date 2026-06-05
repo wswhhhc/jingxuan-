@@ -12,6 +12,7 @@ public class WorkComment extends BaseEntity {
 
     private Long workId;
     private Long userId;
+    private String guestName;
     private String content;
     private Long parentId;
 }

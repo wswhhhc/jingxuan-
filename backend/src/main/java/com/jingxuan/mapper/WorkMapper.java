@@ -31,4 +31,9 @@ public interface WorkMapper extends BaseMapper<Work> {
      * 评分分布统计（按分数段）
      */
     List<Map<String, Object>> selectScoreDistribution();
+
+    /**
+     * 查询作品在同批次中的排名
+     */
+    Integer selectWorkRank(@Param("batchId") Long batchId, @Param("workId") Long workId);
 }
