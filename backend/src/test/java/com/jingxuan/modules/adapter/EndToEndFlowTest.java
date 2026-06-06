@@ -85,14 +85,16 @@ class EndToEndFlowTest extends BaseApiTest {
             ApiResponse createResp = testStuApi.post("/student/works", Map.of(
                     "title", title,
                     "summary", "首次提交流程",
-                    "techStack", "Java/Spring Boot"
+                    "techStack", "Java/Spring Boot",
+                    "previewUrl", "http://test:8080"
             ));
             createResp.assertOk();
             long workId = createResp.getDataNode().asLong();
 
             String attachmentId = uploadAttachmentForWork(workId, "reject-resubmit.zip");
+            String videoId = uploadAttachmentForWork(workId, "demo.mp4");
             ApiResponse bindResp = testStuApi.put("/student/works/" + workId, Map.of(
-                    "attachmentIds", java.util.List.of(attachmentId)
+                    "attachmentIds", java.util.List.of(attachmentId, videoId)
             ));
             bindResp.assertOk();
 

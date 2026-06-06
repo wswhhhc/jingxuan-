@@ -83,12 +83,14 @@ class AdminApiTest extends BaseApiTest {
             ApiResponse createResp = testStuApi.post("/student/works", Map.of(
                     "title", title,
                     "summary", "审核通过流程验证",
-                    "techStack", "Java/Spring Boot"
+                    "techStack", "Java/Spring Boot",
+                    "previewUrl", "http://test-server:8080"
             ));
             createResp.assertOk();
             long workId = createResp.getDataNode().asLong();
 
             attachFileToWorkAsTestStu(workId, "admin-audit.zip");
+            attachFileToWorkAsTestStu(workId, "demo.mp4");
             ApiResponse submitResp = testStuApi.post("/student/works/" + workId + "/submit", null);
             submitResp.assertOk();
 

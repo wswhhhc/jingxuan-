@@ -69,6 +69,9 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
 
     @Override
     public Long createWork(WorkRequest request) {
+        if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
+            throw new BusinessException("作品名称不能为空");
+        }
         Long currentUserId = SecurityUtils.requireCurrentUserId();
 
         // 同一学生在当前活跃批次中只能提交一个作品

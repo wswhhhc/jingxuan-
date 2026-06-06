@@ -140,15 +140,17 @@ class StudentApiTest extends BaseApiTest {
             ApiResponse createResp = testStuApi.post("/student/works", Map.of(
                     "title", title,
                     "summary", "用于提交流程验证",
-                    "techStack", "Java/Spring Boot"
+                    "techStack", "Java/Spring Boot",
+                    "previewUrl", "http://test:8080"
             ));
             createResp.assertOk();
             long workId = createResp.getDataNode().asLong();
 
             String attachmentId = uploadAttachmentForWork(workId, "submit-flow.zip");
+            String videoId = uploadAttachmentForWork(workId, "demo.mp4");
 
             ApiResponse updateResp = testStuApi.put("/student/works/" + workId, Map.of(
-                    "attachmentIds", java.util.List.of(attachmentId)
+                    "attachmentIds", java.util.List.of(attachmentId, videoId)
             ));
             updateResp.assertOk();
 

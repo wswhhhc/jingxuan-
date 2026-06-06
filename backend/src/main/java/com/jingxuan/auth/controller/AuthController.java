@@ -40,19 +40,6 @@ public class AuthController {
         return Result.ok("登录成功", response);
     }
 
-    @Operation(summary = "发送注册邮箱验证码")
-    @PostMapping("/send-code")
-    public Result<Void> sendRegisterCode(@RequestBody Map<String, Object> body) {
-        registrationService.sendVerificationCode(body);
-        return Result.ok();
-    }
-
-    @Operation(summary = "邮箱验证码注册")
-    @PostMapping("/register")
-    public Result<Map<String, Object>> register(@RequestBody Map<String, Object> body) {
-        return Result.ok("注册成功", registrationService.register(body));
-    }
-
     @Operation(summary = "获取当前用户信息（兼容前端 /auth/user-info）")
     @GetMapping({"/me", "/user-info"})
     public Result<UserInfoVO> getCurrentUser() {
