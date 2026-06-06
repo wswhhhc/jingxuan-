@@ -62,11 +62,11 @@ class WorkServiceImplTest {
         WorkAttachmentBindingService attachmentBindingService =
                 new WorkAttachmentBindingService(workAttachmentMapper);
         WorkMemberPolicyService memberPolicyService =
-                new WorkMemberPolicyService(sysUserMapper, workMemberMapper);
+                new WorkMemberPolicyService(sysUserMapper, workMemberMapper, workMapper);
         WorkQueryValidator queryValidator = new WorkQueryValidator();
 
         workService = new WorkServiceImpl(sysUserMapper, workMemberService, workMemberMapper,
-                workAttachmentMapper, workPublishMapper, scoreBatchMapper, sysDictMapper, logService,
+                workAttachmentMapper, workPublishMapper, scoreBatchMapper, logService,
                 contentReviewService, attachmentBindingService, memberPolicyService, queryValidator);
         // baseMapper（从 ServiceImpl 继承）
         ReflectionTestUtils.setField(workService, "baseMapper", workMapper);

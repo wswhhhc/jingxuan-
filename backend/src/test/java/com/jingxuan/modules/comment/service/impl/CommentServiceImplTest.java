@@ -89,7 +89,7 @@ class CommentServiceImplTest {
             });
 
             // when
-            Long commentId = commentService.addComment(WORK_ID, USER_ID, "好作品", null);
+            Long commentId = commentService.addComment(WORK_ID, USER_ID, "好作品", null, null);
 
             // then
             assertNotNull(commentId);
@@ -105,7 +105,7 @@ class CommentServiceImplTest {
                     .thenReturn(DeepSeekReviewService.ReviewResult.fail("abuse", "包含辱骂"));
 
             assertThrows(BusinessException.class,
-                    () -> commentService.addComment(WORK_ID, USER_ID, "脏话", null));
+                    () -> commentService.addComment(WORK_ID, USER_ID, "脏话", null, null));
         }
 
         @Test
@@ -119,7 +119,7 @@ class CommentServiceImplTest {
             when(workPublishMapper.selectByWorkId(WORK_ID)).thenReturn(null);
 
             assertThrows(BusinessException.class,
-                    () -> commentService.addComment(WORK_ID, USER_ID, "好作品", null));
+                    () -> commentService.addComment(WORK_ID, USER_ID, "好作品", null, null));
         }
 
         @Test
@@ -136,7 +136,7 @@ class CommentServiceImplTest {
             when(workCommentMapper.selectById(999L)).thenReturn(null);
 
             assertThrows(BusinessException.class,
-                    () -> commentService.addComment(WORK_ID, USER_ID, "回复", 999L));
+                    () -> commentService.addComment(WORK_ID, USER_ID, "回复", 999L, null));
         }
     }
 

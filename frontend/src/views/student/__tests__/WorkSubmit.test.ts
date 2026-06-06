@@ -83,6 +83,7 @@ describe('WorkSubmit view', () => {
     ;(wrapper.vm as any).form.techStack = 'Vue3'
     ;(wrapper.vm as any).form.members[0].studentName = '张三'
     ;(wrapper.vm as any).form.members[0].studentNo = '2022001'
+    ;(wrapper.vm as any).form.attachments = [{ id: 1, fileName: 'demo.mp4', fileType: 'mp4', fileUrl: 'https://cdn/demo.mp4' }]
 
     await (wrapper.vm as any).handleSaveAndSubmit()
 

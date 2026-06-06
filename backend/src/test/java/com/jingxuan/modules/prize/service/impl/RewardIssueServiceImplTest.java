@@ -4,7 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jingxuan.entity.RewardIssue;
 import com.jingxuan.exception.BusinessException;
+import com.jingxuan.mapper.RewardConfigMapper;
 import com.jingxuan.mapper.RewardIssueMapper;
+import com.jingxuan.mapper.WorkMapper;
+import com.jingxuan.modules.notification.service.NotificationService;
+import com.jingxuan.modules.work.service.WorkMemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,13 +29,16 @@ import static org.mockito.Mockito.*;
 class RewardIssueServiceImplTest {
 
     @Mock private RewardIssueMapper rewardIssueMapper;
+    @Mock private WorkMapper workMapper;
+    @Mock private RewardConfigMapper rewardConfigMapper;
+    @Mock private WorkMemberService workMemberService;
+    @Mock private NotificationService notificationService;
 
     private RewardIssueServiceImpl rewardIssueService;
 
     @BeforeEach
     void setUp() {
-        rewardIssueService = new RewardIssueServiceImpl();
-        ReflectionTestUtils.setField(rewardIssueService, "baseMapper", rewardIssueMapper);
+        rewardIssueService = new RewardIssueServiceImpl(workMapper, rewardConfigMapper, workMemberService, notificationService);
     }
 
     private RewardIssue createIssue(Long id, Long rewardId, Long workId, Integer status) {

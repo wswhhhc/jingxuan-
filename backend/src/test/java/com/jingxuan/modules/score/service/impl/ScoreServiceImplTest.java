@@ -22,6 +22,7 @@ import com.jingxuan.modules.score.dto.ScoreVO;
 import com.jingxuan.modules.sensitive.service.DeepSeekReviewService;
 import com.jingxuan.modules.sensitive.service.SensitiveWordDFA;
 import com.jingxuan.modules.sensitive.service.impl.DeepSeekReviewServiceImpl;
+import com.jingxuan.util.DeepSeekApiClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -63,6 +64,7 @@ class ScoreServiceImplTest {
     @Mock private NotificationService notificationService;
     @Mock private DeepSeekConfig deepSeekConfig;
     @Mock private SensitiveWordDFA sensitiveWordDFA;
+    @Mock private DeepSeekApiClient deepSeekApiClient;
     @Mock private HttpClient httpClient;
     @Mock private HttpResponse<String> httpResponse;
 
@@ -250,7 +252,7 @@ class ScoreServiceImplTest {
             when(scoreBatchMapper.selectById(1L)).thenReturn(batch);
 
             DeepSeekReviewServiceImpl realReviewService =
-                    new DeepSeekReviewServiceImpl(deepSeekConfig, new ObjectMapper(), sensitiveWordDFA);
+                    new DeepSeekReviewServiceImpl(deepSeekConfig, deepSeekApiClient, new ObjectMapper(), sensitiveWordDFA);
             ReflectionTestUtils.setField(realReviewService, "httpClient", httpClient);
             ReflectionTestUtils.setField(scoreService, "deepSeekReviewService", realReviewService);
 
@@ -282,7 +284,7 @@ class ScoreServiceImplTest {
             when(scoreBatchMapper.selectById(1L)).thenReturn(batch);
 
             DeepSeekReviewServiceImpl realReviewService =
-                    new DeepSeekReviewServiceImpl(deepSeekConfig, new ObjectMapper(), sensitiveWordDFA);
+                    new DeepSeekReviewServiceImpl(deepSeekConfig, deepSeekApiClient, new ObjectMapper(), sensitiveWordDFA);
             ReflectionTestUtils.setField(realReviewService, "httpClient", httpClient);
             ReflectionTestUtils.setField(scoreService, "deepSeekReviewService", realReviewService);
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jingxuan.config.DeepSeekConfig;
 import com.jingxuan.modules.sensitive.service.DeepSeekReviewService;
 import com.jingxuan.modules.sensitive.service.SensitiveWordDFA;
+import com.jingxuan.util.DeepSeekApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,12 +27,13 @@ class DeepSeekReviewServiceImplTest {
     @Mock private DeepSeekConfig deepSeekConfig;
     @Mock private ObjectMapper objectMapper;
     @Mock private SensitiveWordDFA sensitiveWordDFA;
+    @Mock private DeepSeekApiClient deepSeekApiClient;
 
     private DeepSeekReviewServiceImpl reviewService;
 
     @BeforeEach
     void setUp() {
-        reviewService = new DeepSeekReviewServiceImpl(deepSeekConfig, objectMapper, sensitiveWordDFA);
+        reviewService = new DeepSeekReviewServiceImpl(deepSeekConfig, deepSeekApiClient, objectMapper, sensitiveWordDFA);
     }
 
     @Nested

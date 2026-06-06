@@ -6,6 +6,7 @@ import com.jingxuan.entity.SysRole;
 import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.SysDictMapper;
 import com.jingxuan.mapper.SysRoleMapper;
+import com.jingxuan.util.DeepSeekApiClient;
 import com.jingxuan.modules.userimport.dto.AiImportMessage;
 import com.jingxuan.modules.userimport.dto.AiUserImportRequest;
 import com.jingxuan.modules.userimport.dto.AiUserImportResponse;
@@ -34,6 +35,7 @@ class AiUserImportServiceImplTest {
     @Mock private DeepSeekConfig deepSeekConfig;
     @Mock private SysRoleMapper sysRoleMapper;
     @Mock private SysDictMapper sysDictMapper;
+    @Mock private DeepSeekApiClient deepSeekApiClient;
     @Mock private HttpClient httpClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -41,7 +43,7 @@ class AiUserImportServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        aiUserImportService = new AiUserImportServiceImpl(deepSeekConfig, objectMapper, sysRoleMapper, sysDictMapper);
+        aiUserImportService = new AiUserImportServiceImpl(deepSeekConfig, deepSeekApiClient, objectMapper, sysRoleMapper, sysDictMapper);
         ReflectionTestUtils.setField(aiUserImportService, "httpClient", httpClient);
     }
 

@@ -184,6 +184,9 @@
             inactive-text="普通"
           />
         </el-form-item>
+        <el-form-item label="访问地址">
+          <el-input v-model="featuredForm.previewUrl" placeholder="请输入服务器访问地址，如 http://ip:port" clearable />
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-actions">
@@ -337,18 +340,20 @@ const handleOffline = async (workId: number) => {
 const featuredDialogVisible = ref(false)
 const featuredForm = reactive({
   title: '',
-  enabled: 0 as 0 | 1
+  enabled: 0 as 0 | 1,
+  previewUrl: ''
 })
 
 const handleFeatured = (work: any) => {
   featuredForm.title = work.title
   featuredForm.enabled = work.featured === 1 ? 1 : 0
+  featuredForm.previewUrl = work.previewUrl || ''
   featuredDialogVisible.value = true
 }
 
 const handleFeaturedSubmit = async () => {
   try {
-    await setFeatured(detail.value!.id, featuredForm.enabled)
+    await setFeatured(detail.value!.id, featuredForm.enabled, featuredForm.previewUrl)
     ElMessage.success(featuredForm.enabled ? '已设为精选' : '已取消精选')
     featuredDialogVisible.value = false
     const res = await getAuditDetail(detail.value!.id)
