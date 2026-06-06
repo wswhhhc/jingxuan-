@@ -36,4 +36,9 @@ public interface NotificationService extends IService<SysNotification> {
      * 获取未读通知数
      */
     long countUnread(Long userId);
+
+    /**
+     * 删除当前用户的所有已读通知
+     */
+    void deleteRead(Long userId);
 }

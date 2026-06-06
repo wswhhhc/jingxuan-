@@ -19,3 +19,8 @@ export function markAsRead(id: number) {
 export function markAllRead() {
   return request.post('/admin/notify/read-all')
 }
+
+export function deleteRead() {
+  return request.delete('/admin/notify/read')
+}
+

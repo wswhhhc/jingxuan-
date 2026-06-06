@@ -23,3 +23,8 @@ export function markAllRead() {
 export function getUnreadCount() {
   return request.get<{ count: number }>('/student/notify/unread-count')
 }
+
+export function deleteRead() {
+  return request.delete('/student/notify/read')
+}
+

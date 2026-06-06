@@ -9,6 +9,7 @@
         <div class="workspace-toolbar__actions">
           <el-checkbox v-model="unreadOnly" label="仅看未读" @change="loadList" />
           <el-button size="small" @click="handleMarkAll">全部已读</el-button>
+          <el-button size="small" type="danger" plain @click="handleDeleteRead">删除已读</el-button>
         </div>
       </div>
     </section>
@@ -67,7 +68,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 interface NotifyItem {
   id: number
@@ -81,6 +82,7 @@ interface NotifyApi {
   getNotifyList(params: { page?: number; size?: number; unreadOnly?: boolean }): Promise<any>
   markAsRead(id: number): Promise<any>
   markAllRead(): Promise<any>
+  deleteRead?(): Promise<any>
 }
 
 const props = defineProps<{
@@ -146,6 +148,17 @@ const handleMarkAll = async () => {
     console.error('全部已读操作失败:', e)
     ElMessage.error('操作失败，请重试')
   }
+}
+
+const handleDeleteRead = async () => {
+  if (!props.api.deleteRead) return
+  try {
+    await ElMessageBox.confirm('确认删除所有已读通知？', '提示')
+    await props.api.deleteRead()
+    ElMessage.success('已删除')
+    loadList()
+    emitNotifyChanged()
+  } catch { /* 取消或错误 */ }
 }
 
 onMounted(loadList)

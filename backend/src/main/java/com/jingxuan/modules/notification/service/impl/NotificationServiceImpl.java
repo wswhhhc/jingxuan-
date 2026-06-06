@@ -94,4 +94,13 @@ public class NotificationServiceImpl extends ServiceImpl<SysNotificationMapper, 
                         .eq(SysNotification::getUserId, userId)
                         .eq(SysNotification::getIsRead, 0));
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteRead(Long userId) {
+        baseMapper.delete(
+                Wrappers.<SysNotification>lambdaQuery()
+                        .eq(SysNotification::getUserId, userId)
+                        .eq(SysNotification::getIsRead, 1));
+    }
 }

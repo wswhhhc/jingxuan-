@@ -62,4 +62,12 @@ public class NotificationController {
         map.put("count", count);
         return Result.ok(map);
     }
+
+    @Operation(summary = "删除已读通知")
+    @DeleteMapping("/read")
+    public Result<Void> deleteRead() {
+        Long userId = SecurityUtils.requireCurrentUserId();
+        notificationService.deleteRead(userId);
+        return Result.ok();
+    }
 }
