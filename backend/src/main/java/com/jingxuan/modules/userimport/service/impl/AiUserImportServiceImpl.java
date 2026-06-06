@@ -1,8 +1,8 @@
 package com.jingxuan.modules.userimport.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jingxuan.config.DeepSeekConfig;
+import com.jingxuan.util.DeepSeekApiClient;
 import com.jingxuan.entity.SysDict;
 import com.jingxuan.entity.SysRole;
 import com.jingxuan.exception.BusinessException;
@@ -17,11 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -40,12 +36,10 @@ public class AiUserImportServiceImpl implements AiUserImportService {
     private static final List<String> OPTIONAL_FIELDS = List.of("class", "password", "phone", "email", "status");
 
     private final DeepSeekConfig deepSeekConfig;
+    private final DeepSeekApiClient deepSeekApiClient;
     private final ObjectMapper objectMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysDictMapper sysDictMapper;
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
 
     @Override
     public AiUserImportResponse parse(AiUserImportRequest request) {
@@ -121,22 +115,13 @@ public class AiUserImportServiceImpl implements AiUserImportService {
 
     private String callDeepSeek(Map<String, Object> requestBody) {
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(deepSeekConfig.getApiUrl()))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + deepSeekConfig.getApiKey())
-                    .timeout(Duration.ofMillis(deepSeekConfig.getTimeout()))
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = deepSeekApiClient.post(requestBody);
             if (response.statusCode() != 200) {
                 log.error("AI 导入助手调用失败: status={}, body={}", response.statusCode(), response.body());
                 throw new BusinessException("AI 导入助手暂时不可用，请稍后重试");
             }
 
-            JsonNode root = objectMapper.readTree(response.body());
-            String content = root.at("/choices/0/message/content").asText("");
+            String content = deepSeekApiClient.extractContent(response.body());
             if (content.isBlank()) {
                 throw new BusinessException("AI 没有返回可用结果，请换种描述再试");
             }

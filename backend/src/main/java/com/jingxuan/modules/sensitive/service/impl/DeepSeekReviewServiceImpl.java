@@ -6,15 +6,12 @@ import com.jingxuan.common.Result;
 import com.jingxuan.config.DeepSeekConfig;
 import com.jingxuan.modules.sensitive.service.DeepSeekReviewService;
 import com.jingxuan.modules.sensitive.service.SensitiveWordDFA;
+import com.jingxuan.util.DeepSeekApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -24,12 +21,9 @@ import java.util.Map;
 public class DeepSeekReviewServiceImpl implements DeepSeekReviewService {
 
     private final DeepSeekConfig deepSeekConfig;
+    private final DeepSeekApiClient deepSeekApiClient;
     private final ObjectMapper objectMapper;
     private final SensitiveWordDFA sensitiveWordDFA;
-
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
 
     private static final String SYSTEM_PROMPT = """
             你是一个严格的内容安全审核助手。你的任务是对用户输入的文本进行审核，判断是否包含任何违规内容。
@@ -89,15 +83,7 @@ public class DeepSeekReviewServiceImpl implements DeepSeekReviewService {
                     "max_tokens", 5
             );
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(deepSeekConfig.getApiUrl()))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
-                    .timeout(Duration.ofSeconds(10))
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = deepSeekApiClient.post(requestBody);
 
             if (response.statusCode() == 200) {
                 return Result.ok();
@@ -138,14 +124,6 @@ public class DeepSeekReviewServiceImpl implements DeepSeekReviewService {
             return handleFallback("序列化异常");
         }
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(deepSeekConfig.getApiUrl()))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .timeout(Duration.ofMillis(deepSeekConfig.getTimeout()))
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                .build();
-
         Exception lastException = null;
         Integer lastStatusCode = null;
 
@@ -156,7 +134,7 @@ public class DeepSeekReviewServiceImpl implements DeepSeekReviewService {
                     Thread.sleep(500L * attempt);
                 }
 
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> response = deepSeekApiClient.post(requestBody);
 
                 if (response.statusCode() != 200) {
                     log.error("DeepSeek API 返回错误: status={}, body={}", response.statusCode(), response.body());
@@ -167,8 +145,7 @@ public class DeepSeekReviewServiceImpl implements DeepSeekReviewService {
                     continue;
                 }
 
-                JsonNode root = objectMapper.readTree(response.body());
-                String content = root.at("/choices/0/message/content").asText("");
+                String content = deepSeekApiClient.extractContent(response.body());
                 if (content.isBlank()) {
                     log.warn("DeepSeek API 返回内容为空，body={}", response.body());
                     continue;
