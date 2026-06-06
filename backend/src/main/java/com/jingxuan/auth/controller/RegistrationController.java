@@ -4,18 +4,15 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.jingxuan.common.Result;
 import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.SysDict;
-import com.jingxuan.entity.SysUser;
-import com.jingxuan.enums.UserStatusEnum;
+import com.jingxuan.entity.SysNotification;
 import com.jingxuan.mapper.ScoreBatchMapper;
 import com.jingxuan.mapper.SysDictMapper;
-import com.jingxuan.mapper.SysUserMapper;
-import com.jingxuan.modules.notification.service.NotificationService;
+import com.jingxuan.mapper.SysNotificationMapper;
+import com.jingxuan.auth.service.RegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -26,131 +23,40 @@ import java.util.stream.Collectors;
 @Tag(name = "注册")
 @RestController
 @RequestMapping("/auth")
+@RequiredArgsConstructor
 public class RegistrationController {
 
-    @Autowired
-    private SysUserMapper sysUserMapper;
+    private final RegistrationService registrationService;
+    private final ScoreBatchMapper scoreBatchMapper;
+    private final SysDictMapper sysDictMapper;
+    private final SysNotificationMapper sysNotificationMapper;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private StringRedisTemplate redisTemplate;
-
-    @Autowired
-    private ScoreBatchMapper scoreBatchMapper;
-
-    @Autowired
-    private SysDictMapper sysDictMapper;
-
-    @Autowired
-    private NotificationService notificationService;
+    @Operation(summary = "发送邮箱验证码")
+    @PostMapping("/send-code")
+    public Result<Void> sendCode(@RequestBody Map<String, Object> body) {
+        registrationService.sendVerificationCode(body);
+        return Result.ok();
+    }
 
     @Operation(summary = "用户注册")
     @PostMapping("/register")
     public Result<Map<String, Object>> register(@RequestBody Map<String, Object> body) {
-        String username = (String) body.get("username");
-        String password = (String) body.get("password");
-        String realName = (String) body.get("realName");
-        String email = (String) body.get("email");
-        String verifyCode = (String) body.get("verifyCode");
+        Map<String, Object> result = registrationService.register(body);
 
-        Integer roleId;
+        // 新学生注册后自动获取批次通知
         Object roleIdObj = body.get("roleId");
-        if (roleIdObj instanceof Integer) {
-            roleId = (Integer) roleIdObj;
-        } else if (roleIdObj instanceof Number) {
-            roleId = ((Number) roleIdObj).intValue();
-        } else {
-            roleId = Integer.valueOf(roleIdObj.toString());
-        }
-
-        if (username == null || username.trim().isEmpty()) {
-            return Result.error("请输入用户名（学号/工号）");
-        }
-        if (password == null || password.length() < 6) {
-            return Result.error("密码至少6位");
-        }
-        if (realName == null || realName.trim().isEmpty()) {
-            return Result.error("请输入真实姓名");
-        }
-        if (email == null || email.trim().isEmpty()) {
-            return Result.error("请输入邮箱地址");
-        }
-        if (verifyCode == null || verifyCode.trim().isEmpty()) {
-            return Result.error("请输入验证码");
-        }
-        if (roleId == null || (roleId != 1 && roleId != 2)) {
-            return Result.error("请选择有效的角色（学生或教师）");
-        }
-
-        email = email.trim();
-        username = username.trim().toLowerCase();
-        realName = realName.trim();
-
-        String verifyKey = "jingxuan:verify:" + email + ":" + roleId;
-        String code = redisTemplate.opsForValue().get(verifyKey);
-        if (code == null) {
-            return Result.error("验证码已过期，请重新发送");
-        }
-        if (!code.equals(verifyCode.trim())) {
-            return Result.error("验证码不正确");
-        }
-
-        SysUser existing = sysUserMapper.findByUsername(username);
-        if (existing != null) {
-            return Result.error("该用户名已被注册");
-        }
-
-        SysUser user = new SysUser();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setRealName(realName);
-        user.setEmail(email);
-        user.setRoleId(roleId);
-        user.setStatus(UserStatusEnum.ENABLED);
-        user.setFirstLogin(false);
-
-        Long classId = null;
-        if (roleId == 1) {
-            Object classIdObj = body.get("classId");
-            if (classIdObj instanceof Number) {
-                classId = ((Number) classIdObj).longValue();
-            } else if (classIdObj instanceof String && !((String) classIdObj).isEmpty()) {
-                classId = Long.valueOf((String) classIdObj);
+        Integer roleId = roleIdObj instanceof Number ? ((Number) roleIdObj).intValue() : null;
+        if (roleId != null && roleId == 1) {
+            Long classId = parseOptionalLong(body.get("classId"));
+            if (classId != null) {
+                Long studentId = (Long) result.get("id");
+                generateBatchNoticesForNewStudent(studentId, classId);
             }
-            if (classId == null) {
-                return Result.error("学生注册请选择班级");
-            }
-            user.setClassId(classId);
         }
 
-        try {
-            sysUserMapper.insert(user);
-            redisTemplate.delete(verifyKey);
-
-            // 新学生注册后自动获取批次通知
-            if (roleId == 1 && classId != null) {
-                generateBatchNoticesForNewStudent(user.getId(), classId);
-            }
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("id", user.getId());
-            result.put("username", user.getUsername());
-            result.put("realName", user.getRealName());
-            return Result.ok("注册成功", result);
-        } catch (Exception e) {
-            String msg = e.getMessage();
-            if (msg != null && msg.contains("Duplicate")) {
-                return Result.error("该邮箱或用户名已被注册");
-            }
-            throw e;
-        }
+        return Result.ok("注册成功", result);
     }
 
-    /**
-     * 为学生生成批次通知（新注册时调用）
-     */
     private void generateBatchNoticesForNewStudent(Long studentId, Long classId) {
         SysDict classDict = sysDictMapper.selectById(classId);
         if (classDict == null) return;
@@ -173,32 +79,46 @@ public class RegistrationController {
             String scopes = batch.getClassScopes();
             if (scopes == null || scopes.isBlank()) continue;
 
-            boolean inScope = false;
-            String trimmed = scopes.trim();
-            if ("全校可参与".equals(trimmed) || "全校".equals(trimmed) || "all".equalsIgnoreCase(trimmed)) {
-                inScope = true;
-            } else {
-                Set<String> scopeValues = Arrays.stream(
-                        trimmed.replace("[", "").replace("]", "").replace("\"", "").split("[,，]"))
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .collect(Collectors.toSet());
-                inScope = scopeValues.contains(classValue);
-            }
-
+            boolean inScope = isClassInScope(classValue, scopes);
             if (inScope) {
-                try {
-                    notificationService.sendNotification(
-                            studentId,
-                            batch.getNoticeTitle(),
-                            batch.getNoticeContent(),
-                            "BATCH_NOTICE",
-                            batch.getId()
-                    );
-                } catch (Exception e) {
-                    log.warn("为新学生生成批次通知失败: studentId={}, batchId={}", studentId, batch.getId(), e);
+                // 检查是否已有该通知（防止重复）
+                Long count = sysNotificationMapper.selectCount(
+                        Wrappers.<SysNotification>lambdaQuery()
+                                .eq(SysNotification::getUserId, studentId)
+                                .eq(SysNotification::getType, "BATCH_NOTICE")
+                                .eq(SysNotification::getRefId, batch.getId()));
+                if (count == 0) {
+                    try {
+                        SysNotification notification = new SysNotification();
+                        notification.setUserId(studentId);
+                        notification.setTitle(batch.getNoticeTitle());
+                        notification.setContent(batch.getNoticeContent());
+                        notification.setType("BATCH_NOTICE");
+                        notification.setRefId(batch.getId());
+                        notification.setIsRead(0);
+                        sysNotificationMapper.insert(notification);
+                    } catch (Exception e) {
+                        log.warn("为新学生生成批次通知失败: studentId={}, batchId={}", studentId, batch.getId(), e);
+                    }
                 }
             }
         }
+    }
+
+    private boolean isClassInScope(String classValue, String scopes) {
+        String trimmed = scopes.trim();
+        if ("全校可参与".equals(trimmed) || "全校".equals(trimmed) || "all".equalsIgnoreCase(trimmed)) {
+            return true;
+        }
+        return Arrays.stream(trimmed.replace("[", "").replace("]", "").replace("\"", "").split("[,，]"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .anyMatch(s -> s.equals(classValue));
+    }
+
+    private Long parseOptionalLong(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number n) return n.longValue();
+        try { return Long.valueOf(value.toString()); } catch (NumberFormatException e) { return null; }
     }
 }
