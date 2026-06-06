@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.common.PageResult;
+import com.jingxuan.common.PageUtil;
 import com.jingxuan.entity.SysNotice;
 import com.jingxuan.entity.SysUser;
 import com.jingxuan.mapper.SysUserMapper;
@@ -76,26 +77,22 @@ public class NoticeServiceImpl extends ServiceImpl<SysNoticeMapper, SysNotice> i
 
     @Override
     public PageResult<SysNotice> queryNoticeList(int pageNum, int pageSize, Integer status) {
-        Page<SysNotice> page = new Page<>(pageNum, pageSize);
-        Page<SysNotice> result = baseMapper.selectPage(page,
-                Wrappers.<SysNotice>lambdaQuery()
-                        .eq(status != null, SysNotice::getStatus, status)
-                        .orderByDesc(SysNotice::getTopFlag)
-                        .orderByDesc(SysNotice::getCreateTime));
+        PageResult<SysNotice> result = PageUtil.query(pageNum, pageSize, baseMapper,
+                w -> w.eq(status != null, SysNotice::getStatus, status)
+                      .orderByDesc(SysNotice::getTopFlag)
+                      .orderByDesc(SysNotice::getCreateTime));
         enrichPublisherNames(result.getRecords());
-        return PageResult.of(result.getRecords(), result.getTotal(), pageNum, pageSize);
+        return result;
     }
 
     @Override
     public PageResult<SysNotice> getPublishedNotices(int pageNum, int pageSize) {
-        Page<SysNotice> page = new Page<>(pageNum, pageSize);
-        Page<SysNotice> result = baseMapper.selectPage(page,
-                Wrappers.<SysNotice>lambdaQuery()
-                        .eq(SysNotice::getStatus, 1)
-                        .orderByDesc(SysNotice::getTopFlag)
-                        .orderByDesc(SysNotice::getPublishTime));
+        PageResult<SysNotice> result = PageUtil.query(pageNum, pageSize, baseMapper,
+                w -> w.eq(SysNotice::getStatus, 1)
+                      .orderByDesc(SysNotice::getTopFlag)
+                      .orderByDesc(SysNotice::getPublishTime));
         enrichPublisherNames(result.getRecords());
-        return PageResult.of(result.getRecords(), result.getTotal(), pageNum, pageSize);
+        return result;
     }
 
     private void enrichPublisherNames(List<SysNotice> notices) {

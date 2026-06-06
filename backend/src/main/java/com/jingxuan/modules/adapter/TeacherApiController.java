@@ -3,8 +3,6 @@ package com.jingxuan.modules.adapter;
 import com.jingxuan.common.PageResult;
 import com.jingxuan.common.Result;
 import com.jingxuan.entity.ScoreBatch;
-import com.jingxuan.entity.SysNotification;
-import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.rank.dto.RankQueryRequest;
 import com.jingxuan.modules.rank.dto.RankVO;
 import com.jingxuan.modules.rank.service.RankService;
@@ -31,7 +29,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -45,7 +42,6 @@ public class TeacherApiController {
     private final ScoreService scoreService;
     private final ScoreBatchService scoreBatchService;
     private final RankService rankService;
-    private final NotificationService notificationService;
 
     @GetMapping("/teacher/work/list")
     @Operation(summary = "查询作品列表（教师端，仅展示已审核通过的作品）")
@@ -152,41 +148,5 @@ public class TeacherApiController {
     public Result<Void> refreshRankingByBatch(@PathVariable Long batchId) {
         rankService.refreshRankCache(batchId);
         return Result.ok();
-    }
-
-    @GetMapping("/teacher/notify/list")
-    @Operation(summary = "获取通知列表")
-    public Result<PageResult<SysNotification>> listNotifications(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Boolean unreadOnly) {
-        Long userId = SecurityUtils.requireCurrentUserId();
-        return Result.ok(notificationService.queryUserNotifications(userId, page, size, unreadOnly));
-    }
-
-    @PostMapping("/teacher/notify/read/{id}")
-    @Operation(summary = "标记通知已读")
-    public Result<Void> markNotificationRead(@PathVariable Long id) {
-        Long userId = SecurityUtils.requireCurrentUserId();
-        notificationService.markAsRead(id, userId);
-        return Result.ok();
-    }
-
-    @PostMapping("/teacher/notify/read-all")
-    @Operation(summary = "全部标记已读")
-    public Result<Void> markAllNotificationsRead() {
-        Long userId = SecurityUtils.requireCurrentUserId();
-        notificationService.markAllAsRead(userId);
-        return Result.ok();
-    }
-
-    @GetMapping("/teacher/notify/unread-count")
-    @Operation(summary = "获取未读通知数")
-    public Result<Map<String, Long>> getUnreadCount() {
-        Long userId = SecurityUtils.requireCurrentUserId();
-        long count = notificationService.countUnread(userId);
-        Map<String, Long> map = new HashMap<>();
-        map.put("count", count);
-        return Result.ok(map);
     }
 }

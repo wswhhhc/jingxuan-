@@ -10,12 +10,18 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * 消息通知接口
+ *
+ * 统一处理所有角色的通知查询/已读/未读数接口，
+ * 消除 AdminApiController / TeacherApiController / StudentApiController 中的重复代码。
  */
 @Tag(name = "消息通知")
 @RestController
-@RequestMapping("/api/notification")
+@RequestMapping({"/notification", "/admin/notify", "/teacher/notify", "/student/notify"})
 @RequiredArgsConstructor
 public class NotificationController {
 
@@ -23,15 +29,16 @@ public class NotificationController {
 
     @Operation(summary = "查询用户通知列表")
     @GetMapping("/list")
-    public Result<PageResult<SysNotification>> list(@RequestParam(defaultValue = "1") int pageNum,
-                                                    @RequestParam(defaultValue = "10") int pageSize) {
+    public Result<PageResult<SysNotification>> list(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Boolean unreadOnly) {
         Long userId = SecurityUtils.requireCurrentUserId();
-        PageResult<SysNotification> pageResult = notificationService.queryUserNotifications(userId, pageNum, pageSize, null);
-        return Result.ok(pageResult);
+        return Result.ok(notificationService.queryUserNotifications(userId, page, size, unreadOnly));
     }
 
     @Operation(summary = "标记通知已读")
-    @PostMapping("/{id}/read")
+    @PostMapping("/read/{id}")
     public Result<Void> markAsRead(@PathVariable Long id) {
         Long userId = SecurityUtils.requireCurrentUserId();
         notificationService.markAsRead(id, userId);
@@ -48,9 +55,11 @@ public class NotificationController {
 
     @Operation(summary = "获取未读通知数")
     @GetMapping("/unread-count")
-    public Result<Long> unreadCount() {
+    public Result<Map<String, Long>> unreadCount() {
         Long userId = SecurityUtils.requireCurrentUserId();
         long count = notificationService.countUnread(userId);
-        return Result.ok(count);
+        Map<String, Long> map = new HashMap<>();
+        map.put("count", count);
+        return Result.ok(map);
     }
 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.common.PageResult;
+import com.jingxuan.common.PageUtil;
 import com.jingxuan.entity.SensitiveRule;
 import com.jingxuan.mapper.SensitiveRuleMapper;
 import com.jingxuan.modules.sensitive.service.SensitiveRuleService;
@@ -19,12 +20,9 @@ public class SensitiveRuleServiceImpl extends ServiceImpl<SensitiveRuleMapper, S
 
     @Override
     public PageResult<SensitiveRule> queryRuleList(int pageNum, int pageSize, String keyword) {
-        Page<SensitiveRule> page = new Page<>(pageNum, pageSize);
-        Page<SensitiveRule> result = baseMapper.selectPage(page,
-                Wrappers.<SensitiveRule>lambdaQuery()
-                        .like(keyword != null && !keyword.isEmpty(), SensitiveRule::getRuleName, keyword)
-                        .orderByDesc(SensitiveRule::getCreateTime));
-        return PageResult.of(result.getRecords(), result.getTotal(), pageNum, pageSize);
+        return PageUtil.query(pageNum, pageSize, baseMapper,
+                w -> w.like(keyword != null && !keyword.isEmpty(), SensitiveRule::getRuleName, keyword)
+                      .orderByDesc(SensitiveRule::getCreateTime));
     }
 
     @Override

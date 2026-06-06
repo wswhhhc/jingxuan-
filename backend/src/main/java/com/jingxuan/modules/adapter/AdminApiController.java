@@ -9,7 +9,6 @@ import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.SysDict;
 import com.jingxuan.entity.SysLog;
 import com.jingxuan.entity.SysNotice;
-import com.jingxuan.entity.SysNotification;
 import com.jingxuan.modules.audit.dto.AuditHistoryVO;
 import com.jingxuan.modules.audit.dto.AuditRequest;
 import com.jingxuan.modules.audit.service.AuditService;
@@ -19,7 +18,6 @@ import com.jingxuan.modules.dict.service.DictService;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.notice.dto.NoticeRequest;
 import com.jingxuan.modules.notice.service.NoticeService;
-import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.prize.service.PrizeService;
 import com.jingxuan.modules.prize.service.RewardIssueService;
 import com.jingxuan.modules.publish.dto.FeaturedRequest;
@@ -68,7 +66,6 @@ public class AdminApiController {
     private final ScoreBatchService scoreBatchService;
     private final PrizeService prizeService;
     private final RewardIssueService rewardIssueService;
-    private final NotificationService notificationService;
 
     // ==================== Dashboard ====================
 
@@ -301,43 +298,6 @@ public class AdminApiController {
             @RequestParam(required = false) String action,
             @RequestParam(required = false) Long userId) {
         return Result.ok(logService.queryLogList(page, size, action, userId));
-    }
-
-    // ==================== Notification ====================
-
-    @GetMapping("/admin/notify/unread-count")
-    @Operation(summary = "获取未读通知数（管理端）")
-    public Result<Map<String, Long>> getUnreadCount() {
-        Long userId = SecurityUtils.requireCurrentUserId();
-        long count = notificationService.countUnread(userId);
-        Map<String, Long> map = new HashMap<>();
-        map.put("count", count);
-        return Result.ok(map);
-    }
-
-    @GetMapping("/admin/notify/list")
-    @Operation(summary = "获取通知列表（管理端）")
-    public Result<PageResult<SysNotification>> listNotifications(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Long userId = SecurityUtils.requireCurrentUserId();
-        return Result.ok(notificationService.queryUserNotifications(userId, page, size, null));
-    }
-
-    @PostMapping("/admin/notify/read/{id}")
-    @Operation(summary = "标记通知已读（管理端）")
-    public Result<Void> markNotificationRead(@PathVariable Long id) {
-        Long userId = SecurityUtils.requireCurrentUserId();
-        notificationService.markAsRead(id, userId);
-        return Result.ok();
-    }
-
-    @PostMapping("/admin/notify/read-all")
-    @Operation(summary = "全部标记已读（管理端）")
-    public Result<Void> markAllNotificationsRead() {
-        Long userId = SecurityUtils.requireCurrentUserId();
-        notificationService.markAllAsRead(userId);
-        return Result.ok();
     }
 
     // ==================== Score Batch ====================

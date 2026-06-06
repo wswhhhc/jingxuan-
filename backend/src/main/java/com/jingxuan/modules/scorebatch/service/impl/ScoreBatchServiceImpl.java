@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.common.PageResult;
+import com.jingxuan.common.PageUtil;
 import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.SysDict;
 import com.jingxuan.entity.SysUser;
@@ -64,11 +65,8 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
 
     @Override
     public PageResult<ScoreBatch> queryBatchList(int pageNum, int pageSize) {
-        Page<ScoreBatch> page = new Page<>(pageNum, pageSize);
-        Page<ScoreBatch> result = baseMapper.selectPage(page,
-                Wrappers.<ScoreBatch>lambdaQuery()
-                        .orderByDesc(ScoreBatch::getCreateTime));
-        return PageResult.of(result.getRecords(), result.getTotal(), pageNum, pageSize);
+        return PageUtil.query(pageNum, pageSize, baseMapper,
+                w -> w.orderByDesc(ScoreBatch::getCreateTime));
     }
 
     @Override

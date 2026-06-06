@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.common.PageResult;
+import com.jingxuan.common.PageUtil;
 import com.jingxuan.entity.SysNotification;
 import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.SysNotificationMapper;
@@ -54,13 +55,10 @@ public class NotificationServiceImpl extends ServiceImpl<SysNotificationMapper, 
 
     @Override
     public PageResult<SysNotification> queryUserNotifications(Long userId, int pageNum, int pageSize, Boolean unreadOnly) {
-        Page<SysNotification> page = new Page<>(pageNum, pageSize);
-        Page<SysNotification> result = baseMapper.selectPage(page,
-                Wrappers.<SysNotification>lambdaQuery()
-                        .eq(SysNotification::getUserId, userId)
-                        .eq(unreadOnly != null && unreadOnly, SysNotification::getIsRead, 0)
-                        .orderByDesc(SysNotification::getCreateTime));
-        return PageResult.of(result.getRecords(), result.getTotal(), pageNum, pageSize);
+        return PageUtil.query(pageNum, pageSize, baseMapper,
+                w -> w.eq(SysNotification::getUserId, userId)
+                      .eq(unreadOnly != null && unreadOnly, SysNotification::getIsRead, 0)
+                      .orderByDesc(SysNotification::getCreateTime));
     }
 
     @Override

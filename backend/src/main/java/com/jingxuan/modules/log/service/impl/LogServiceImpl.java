@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.common.PageResult;
+import com.jingxuan.common.PageUtil;
 import com.jingxuan.entity.SysLog;
 import com.jingxuan.entity.SysUser;
 import com.jingxuan.mapper.SysLogMapper;
@@ -28,13 +29,10 @@ public class LogServiceImpl extends ServiceImpl<SysLogMapper, SysLog> implements
 
     @Override
     public PageResult<SysLog> queryLogList(int pageNum, int pageSize, String action, Long userId) {
-        Page<SysLog> page = new Page<>(pageNum, pageSize);
-        Page<SysLog> result = baseMapper.selectPage(page,
-                Wrappers.<SysLog>lambdaQuery()
-                        .eq(action != null && !action.isEmpty(), SysLog::getAction, action)
-                        .eq(userId != null, SysLog::getUserId, userId)
-                        .orderByDesc(SysLog::getCreateTime));
-        return PageResult.of(result.getRecords(), result.getTotal(), pageNum, pageSize);
+        return PageUtil.query(pageNum, pageSize, baseMapper,
+                w -> w.eq(action != null && !action.isEmpty(), SysLog::getAction, action)
+                      .eq(userId != null, SysLog::getUserId, userId)
+                      .orderByDesc(SysLog::getCreateTime));
     }
 
     private final SysUserMapper sysUserMapper;
