@@ -44,3 +44,4 @@ frontend/dist/assets/*.bak
 frontend/dist/assets/*.conflicted
 frontend/dist/assets/*.gz
 deploy/
+nginx-jingxuan.conf.bak
