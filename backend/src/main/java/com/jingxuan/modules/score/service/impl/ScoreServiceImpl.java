@@ -10,6 +10,7 @@ import com.jingxuan.entity.SysUser;
 import com.jingxuan.entity.Work;
 import com.jingxuan.entity.WorkScore;
 import com.jingxuan.exception.BusinessException;
+import com.jingxuan.util.ClassScopeUtil;
 import com.jingxuan.mapper.ScoreBatchMapper;
 import com.jingxuan.mapper.SysDictMapper;
 import com.jingxuan.mapper.SysUserMapper;
@@ -92,16 +93,7 @@ public class ScoreServiceImpl extends ServiceImpl<WorkScoreMapper, WorkScore> im
                 if (StrUtil.isNotBlank(batch.getClassScopes())) {
                     SysUser submitter = sysUserMapper.selectById(work.getSubmitterId());
                     if (submitter != null && submitter.getClassId() != null) {
-                        Set<String> scopes;
-                        try {
-                            scopes = new HashSet<>(JSONUtil.parseArray(batch.getClassScopes()).toList(String.class));
-                        } catch (Exception e) {
-                            // 兼容旧数据中的逗号分隔格式
-                            scopes = Arrays.stream(batch.getClassScopes().replace("[", "").replace("]", "").replace("\"", "").split(","))
-                                    .map(String::trim)
-                                    .filter(StrUtil::isNotBlank)
-                                    .collect(Collectors.toSet());
-                        }
+                        Set<String> scopes = ClassScopeUtil.parseToStringSet(batch.getClassScopes());
                         String classId = String.valueOf(submitter.getClassId());
                         SysDict classDict = sysDictMapper.selectById(submitter.getClassId());
                         String classValue = classDict != null ? classDict.getDictValue() : null;
