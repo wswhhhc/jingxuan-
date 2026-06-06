@@ -21,7 +21,7 @@ import java.util.Map;
  */
 @Tag(name = "消息通知")
 @RestController
-@RequestMapping({"/notification", "/admin/notify", "/teacher/notify", "/student/notify"})
+@RequestMapping({"/admin/notify", "/teacher/notify", "/student/notify"})
 @RequiredArgsConstructor
 public class NotificationController {
 

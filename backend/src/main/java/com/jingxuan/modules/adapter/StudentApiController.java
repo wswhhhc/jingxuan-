@@ -5,11 +5,10 @@ import com.jingxuan.common.Result;
 import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.modules.score.dto.MyRankVO;
 import com.jingxuan.modules.scorebatch.service.ScoreBatchService;
-import com.jingxuan.modules.work.dto.WorkCreateRequest;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
 import com.jingxuan.modules.work.dto.WorkListVO;
 import com.jingxuan.modules.work.dto.WorkQueryRequest;
-import com.jingxuan.modules.work.dto.WorkUpdateRequest;
+import com.jingxuan.modules.work.dto.WorkRequest;
 import com.jingxuan.modules.work.service.WorkService;
 import com.jingxuan.security.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,7 +35,7 @@ public class StudentApiController {
 
     @Operation(summary = "创建作品")
     @PostMapping("/student/works")
-    public Result<Long> createWork(@Valid @RequestBody WorkCreateRequest request) {
+    public Result<Long> createWork(@Valid @RequestBody WorkRequest request) {
         Long workId = workService.createWork(request);
         return Result.ok(workId);
     }
@@ -66,7 +65,7 @@ public class StudentApiController {
     @Operation(summary = "更新作品")
     @PutMapping("/student/works/{id}")
     public Result<Void> updateWork(@PathVariable Long id,
-                                   @Valid @RequestBody WorkUpdateRequest request) {
+                                   @Valid @RequestBody WorkRequest request) {
         workService.updateWork(id, request);
         return Result.ok();
     }

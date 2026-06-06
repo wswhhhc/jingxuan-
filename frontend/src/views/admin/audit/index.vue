@@ -14,7 +14,7 @@
 
       <el-form :model="query" inline class="audit-filters">
         <el-form-item label="状态">
-          <el-select v-model="query.status" clearable placeholder="全部">
+          <el-select v-model="query.status" clearable placeholder="全部" style="width:130px">
             <el-option label="待审核" :value="1" />
             <el-option label="已通过" :value="3" />
             <el-option label="已驳回" :value="2" />
@@ -27,7 +27,7 @@
           <el-input v-model="query.techStack" placeholder="技术栈" clearable />
         </el-form-item>
         <el-form-item label="班级">
-          <el-select v-model="query.classId" placeholder="全部" clearable>
+          <el-select v-model="query.classId" placeholder="全部" clearable style="width:180px">
             <el-option v-for="c in classes" :key="c.id" :label="c.dictLabel" :value="c.id" />
           </el-select>
         </el-form-item>

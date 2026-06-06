@@ -86,18 +86,8 @@ export interface WorkListParams {
 /* ============ 后端响应 → 前端 WorkItem 适配 ============ */
 
 /**
- * 适配 WorkListVO（学生作品列表项）
+ * 适配后端 WorkListVO / WorkDetailVO 为前端 WorkItem
  */
-function adaptListVO(item: any): WorkItem {
-  return adaptWorkVO(item) as WorkItem
-}
-
-/**
- * 适配 WorkDetailVO（作品详情）
- */
-function adaptDetailVO(item: any): WorkItem {
-  return adaptWorkVO(item) as WorkItem
-}
 
 /* ============ 前端表单 → 后端请求体适配 ============ */
 
@@ -200,7 +190,7 @@ export async function getMyWorks(params: WorkListParams) {
     params: queryParams,
   })
   // 适配后端响应：包住 data 中的 PageResult
-  res.data = adaptPageResult(res.data, adaptListVO)
+  res.data = adaptPageResult(res.data, adaptWorkVO)
   return res
 }
 
@@ -209,7 +199,7 @@ export async function getWorkDetail(id: string | number) {
     url: `/student/works/${id}`,
     method: 'get',
   })
-  res.data = adaptDetailVO(res.data)
+  res.data = adaptWorkVO(res.data)
   return res
 }
 

@@ -10,12 +10,12 @@
 
       <el-form :model="query" inline>
         <el-form-item label="批次">
-          <el-select v-model="query.batchId" placeholder="选择批次" clearable @change="onBatchChange">
+          <el-select v-model="query.batchId" placeholder="选择批次" clearable style="width:240px" @change="onBatchChange">
             <el-option v-for="b in batches" :key="b.id" :label="b.batchName" :value="b.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="query.type" placeholder="全部" clearable @change="reload">
+          <el-select v-model="query.type" placeholder="全部" clearable style="width:160px" @change="reload">
             <el-option v-for="c in categories" :key="c.value" :label="c.label" :value="c.value" />
           </el-select>
         </el-form-item>
@@ -80,7 +80,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getRanking, getRankingBatches, getRankingCategories, refreshRanking } from '@/api/teacher/ranking'
-import type { RankingItem, CategoryItem } from '@/api/teacher/ranking'
+import type { RankItem, CategoryItem } from '@/api/types'
 import { useApiList } from '@/composables/useApiList'
 
 import { rewardTagType } from '@/utils/format'
@@ -91,9 +91,9 @@ const query = reactive({
   batchId: undefined as number | undefined,
   type: undefined as string | undefined
 })
-const { loading, list, loadList } = useApiList<RankingItem>(getRanking, data => ({
-  records: (data as RankingItem[]) || [],
-  total: (data as RankingItem[])?.length || 0
+const { loading, list, loadList } = useApiList<RankItem>(getRanking, data => ({
+  records: (data as RankItem[]) || [],
+  total: (data as RankItem[])?.length || 0
 }))
 const reload = () => loadList({ ...query, topN: 50 })
 

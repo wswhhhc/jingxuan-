@@ -10,6 +10,7 @@ export interface CommentItem {
   replyToUserName?: string
   createTime: string
   userName: string
+  avatarUrl?: string
   roleName: string
   replies: CommentItem[]
 }

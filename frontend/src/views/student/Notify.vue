@@ -8,5 +8,7 @@
 
 <script setup lang="ts">
 import NotificationList from '@/components/NotificationList.vue'
-import * as notifyApi from '@/api/student/notify'
+import { createNotifyApi } from '@/api/notify'
+
+const notifyApi = createNotifyApi('student')
 </script>

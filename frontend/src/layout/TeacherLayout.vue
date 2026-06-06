@@ -80,7 +80,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { HomeFilled, Reading, EditPen, TrendCharts, Bell, ArrowDown } from '@element-plus/icons-vue'
-import { getUnreadCount } from '@/api/teacher/notify'
+import { getUnreadCount } from '@/api/notify'
 import { useNotificationPolling } from '@/composables/useNotificationPolling'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 import type { UserInfo } from '@/api/types'
@@ -90,7 +90,7 @@ const route = useRoute()
 const router = useRouter()
 const userInfo = ref<UserInfo | null>(getCachedUserInfo())
 const { unreadCount, hasUnread } = useNotificationPolling({
-  fetchFn: () => getUnreadCount().then(r => r.data as { count: number }),
+  fetchFn: () => getUnreadCount('teacher').then(r => r.data as { count: number }),
   eventName: 'teacher-notify-changed',
 })
 const avatarFallback = computed(() => userInfo.value?.realName?.charAt?.(0) || '师')

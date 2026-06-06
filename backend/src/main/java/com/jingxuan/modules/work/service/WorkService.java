@@ -12,12 +12,12 @@ public interface WorkService extends IService<Work> {
     /**
      * 创建作品（草稿状态）
      */
-    Long createWork(WorkCreateRequest request);
+    Long createWork(WorkRequest request);
 
     /**
      * 编辑作品
      */
-    void updateWork(Long id, WorkUpdateRequest request);
+    void updateWork(Long id, WorkRequest request);
 
     /**
      * 提交审核（草稿→已提交）

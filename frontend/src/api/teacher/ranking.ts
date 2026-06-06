@@ -1,33 +1,8 @@
 import request from '../request'
-
-export interface RankingItem {
-  rankNo: number
-  workId: number
-  workTitle: string
-  techStack: string
-  coverUrl: string
-  avgScore: number
-  avgInnovation: number
-  avgDifficulty: number
-  avgCompletion: number
-  avgPracticality: number
-  teacherCount: number
-  submitTime: string
-  /** 获奖等级文案，如「一等奖」 */
-  rewardLevel: string
-  /** 兼容字段，与 rewardLevel 相同 */
-  rewardName: string
-  /** 奖品说明，如「荣誉证书 + 500元京东卡」 */
-  prizeName: string
-}
-
-export interface CategoryItem {
-  label: string
-  value: string
-}
+import type { RankItem, CategoryItem } from '../types'
 
 export function getRanking(params: { batchId?: number; type?: string; topN?: number }) {
-  return request.get<RankingItem[]>('/teacher/ranking/list', { params })
+  return request.get<RankItem[]>('/teacher/ranking/list', { params })
 }
 
 export function getRankingBatches() {

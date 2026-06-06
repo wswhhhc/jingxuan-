@@ -23,12 +23,11 @@ import com.jingxuan.mapper.WorkMemberMapper;
 import com.jingxuan.mapper.WorkPublishMapper;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.score.service.ScoreService;
-import com.jingxuan.modules.work.dto.WorkCreateRequest;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
 import com.jingxuan.modules.work.dto.WorkListVO;
 import com.jingxuan.modules.work.dto.WorkMemberDTO;
 import com.jingxuan.modules.work.dto.WorkQueryRequest;
-import com.jingxuan.modules.work.dto.WorkUpdateRequest;
+import com.jingxuan.modules.work.dto.WorkRequest;
 import com.jingxuan.modules.work.service.WorkMemberService;
 import com.jingxuan.modules.work.service.WorkService;
 import com.jingxuan.security.SecurityUtils;
@@ -69,7 +68,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     private ScoreService scoreService;
 
     @Override
-    public Long createWork(WorkCreateRequest request) {
+    public Long createWork(WorkRequest request) {
         Long currentUserId = SecurityUtils.requireCurrentUserId();
 
         // 同一学生在当前活跃批次中只能提交一个作品
@@ -128,7 +127,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     }
 
     @Override
-    public void updateWork(Long id, WorkUpdateRequest request) {
+    public void updateWork(Long id, WorkRequest request) {
         Work work = baseMapper.selectById(id);
         if (work == null) {
             throw new BusinessException("作品不存在");

@@ -81,7 +81,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/student/auth'
-import { getUnreadCount } from '@/api/student/notify'
+import { getUnreadCount } from '@/api/notify'
 import { useNotificationPolling } from '@/composables/useNotificationPolling'
 import { ArrowDown, HomeFilled, Plus, Document, Trophy, Bell } from '@element-plus/icons-vue'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
@@ -90,7 +90,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const { unreadCount, hasUnread } = useNotificationPolling({
-  fetchFn: () => getUnreadCount().then(r => r.data as { count: number }),
+  fetchFn: () => getUnreadCount('student').then(r => r.data as { count: number }),
   eventName: 'student-notify-changed',
 })
 const avatarFallback = computed(() => authStore.userInfo?.realName?.charAt(0) || '学')

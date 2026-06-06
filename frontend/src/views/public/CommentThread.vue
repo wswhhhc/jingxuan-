@@ -1,8 +1,10 @@
 <template>
   <div class="comment-thread">
     <div class="comment-item" :class="{ 'is-nested': currentDepth > 0 }">
-      <div v-if="currentDepth === 0" class="comment-avatar">
-        <el-avatar :size="36">{{ displayName.charAt(0) }}</el-avatar>
+      <div class="comment-avatar">
+        <el-avatar :size="currentDepth === 0 ? 36 : 28" :src="comment.avatarUrl || undefined">
+          {{ displayName.charAt(0) }}
+        </el-avatar>
       </div>
       <div class="comment-body">
         <div class="comment-header">

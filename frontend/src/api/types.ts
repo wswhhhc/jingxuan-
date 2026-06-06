@@ -59,6 +59,35 @@ export const IMAGE_TYPES: readonly string[] = ['jpg', 'jpeg', 'png', 'gif', 'web
 export const VIDEO_TYPES: readonly string[] = ['mp4', 'avi', 'mov', 'mkv', 'webm']
 export const MEDIA_TYPES: readonly string[] = [...IMAGE_TYPES, ...VIDEO_TYPES]
 
+/** 排行项 — 公开端/教师端共用 */
+export interface RankItem {
+  rankNo: number
+  workId: number
+  workTitle: string
+  techStack: string
+  coverUrl: string
+  advisor?: string
+  avgScore: number
+  avgInnovation: number
+  avgDifficulty: number
+  avgCompletion: number
+  avgPracticality: number
+  teacherCount: number
+  submitTime: string
+  /** 获奖等级文案，如「一等奖」 */
+  rewardLevel: string
+  /** 兼容字段，与 rewardLevel 相同 */
+  rewardName: string
+  /** 奖品说明，如「荣誉证书 + 500元京东卡」 */
+  prizeName: string
+}
+
+/** 键值选项（用于下拉筛选等场景） */
+export interface CategoryItem {
+  label: string
+  value: string
+}
+
 /** 用户信息（登录后缓存，所有角色通用） */
 export interface UserInfo {
   id: number

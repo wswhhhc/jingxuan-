@@ -90,7 +90,7 @@ import {
   Odometer, Finished, Notification, Setting,
   TrophyBase, Timer, Key, Bell, ArrowDown, User, Document, List, ChatDotRound, Fold, Expand
 } from '@element-plus/icons-vue'
-import request from '../api/request'
+import { getUnreadCount } from '@/api/notify'
 import { useNotificationPolling } from '@/composables/useNotificationPolling'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 import type { UserInfo } from '@/api/types'
@@ -101,7 +101,7 @@ const router = useRouter()
 const isSidebarCollapsed = ref(false)
 const userInfo = ref<UserInfo | null>(getCachedUserInfo())
 const { unreadCount, hasUnread } = useNotificationPolling({
-  fetchFn: () => request.get('/admin/notify/unread-count').then(r => r.data as { count: number }),
+  fetchFn: () => getUnreadCount('admin').then(r => r.data as { count: number }),
   eventName: 'admin-notify-changed',
 })
 const avatarFallback = computed(() => userInfo.value?.realName?.charAt?.(0) || '管')

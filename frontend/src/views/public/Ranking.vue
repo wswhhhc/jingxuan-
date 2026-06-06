@@ -38,12 +38,12 @@
 
       <el-form :model="query" inline class="ranking-filters">
         <el-form-item label="批次">
-          <el-select v-model="query.batchId" placeholder="选择批次" clearable @change="onBatchChange">
+          <el-select v-model="query.batchId" placeholder="选择批次" clearable style="width:240px" @change="onBatchChange">
             <el-option v-for="b in batches" :key="b.batchId" :label="b.batchName" :value="b.batchId" />
           </el-select>
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="query.category" placeholder="全部" clearable @change="loadList">
+          <el-select v-model="query.category" placeholder="全部" clearable style="width:160px" @change="loadList">
             <el-option v-for="c in categories" :key="c" :label="c" :value="c" />
           </el-select>
         </el-form-item>
@@ -61,7 +61,11 @@
         </div>
       </div>
 
-      <el-table :data="list" v-loading="loading">
+      <div v-if="!query.batchId && !loading" class="workspace-empty">
+        <el-empty description="请选择批次查看排行" />
+      </div>
+
+      <el-table v-else :data="list" v-loading="loading">
         <el-table-column label="排名" width="86">
           <template #default="{ row }">
             <span v-if="row.rankNo <= 3" class="rank-medal">{{ ['🥇', '🥈', '🥉'][row.rankNo - 1] }}</span>
@@ -100,7 +104,7 @@
         </el-table-column>
       </el-table>
 
-      <div v-if="list.length === 0 && !loading" class="table-empty">暂无排行数据</div>
+      <div v-if="list.length === 0 && !loading && query.batchId" class="table-empty">暂无排行数据</div>
     </section>
   </div>
 </template>
@@ -108,11 +112,11 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { getRankingList, getRankingBatches, getRankingCategories } from '@/api/public/ranking'
-import type { PublicRankItem } from '@/api/public/ranking'
+import type { RankItem } from '@/api/types'
 
 import { rewardTagType } from '@/utils/format'
 const loading = ref(false)
-const list = ref<PublicRankItem[]>([])
+const list = ref<RankItem[]>([])
 const batches = ref<{ batchId: number; batchName: string }[]>([])
 const categories = ref<string[]>([])
 
@@ -143,7 +147,7 @@ const loadList = async () => {
   loading.value = true
   try {
     const res = await getRankingList({ batchId: query.batchId, topN: 50, techStack: query.category || undefined })
-    list.value = (res.data as PublicRankItem[]) || []
+    list.value = (res.data as RankItem[]) || []
   } finally {
     loading.value = false
   }

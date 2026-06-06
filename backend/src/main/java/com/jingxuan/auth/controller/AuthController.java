@@ -16,11 +16,10 @@ import java.util.Map;
 
 /**
  * 认证接口
- * 同时支持 /auth/* 和 /api/auth/* 两种路径（适配前端 /api 代理）
  */
 @Tag(name = "认证管理", description = "登录、登出、获取用户信息")
 @RestController
-@RequestMapping({"/auth", "/api/auth"})
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 

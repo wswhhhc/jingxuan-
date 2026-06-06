@@ -11,9 +11,8 @@ import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.*;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.sensitive.service.DeepSeekReviewService;
-import com.jingxuan.modules.work.dto.WorkCreateRequest;
 import com.jingxuan.modules.work.dto.WorkMemberDTO;
-import com.jingxuan.modules.work.dto.WorkUpdateRequest;
+import com.jingxuan.modules.work.dto.WorkRequest;
 import com.jingxuan.modules.work.service.WorkMemberService;
 import com.jingxuan.security.SecurityUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -121,7 +120,7 @@ class WorkServiceImplTest {
                 return 1;
             });
 
-            WorkCreateRequest request = new WorkCreateRequest();
+            WorkRequest request = new WorkRequest();
             request.setTitle("新作品");
             request.setSummary("简介");
             request.setTechStack("Java/Spring Boot");
@@ -147,7 +146,7 @@ class WorkServiceImplTest {
             when(scoreBatchMapper.selectOne(any())).thenReturn(activeBatch);
             when(workMapper.selectCount(any())).thenReturn(1L); // 已存在作品
 
-            WorkCreateRequest request = new WorkCreateRequest();
+            WorkRequest request = new WorkRequest();
             request.setTitle("重复作品");
 
             // when/then
@@ -166,7 +165,7 @@ class WorkServiceImplTest {
             when(workMapper.selectCount(any())).thenReturn(0L); // 提交者无作品
             when(workMemberMapper.selectCount(any())).thenReturn(1L); // 成员已在其他作品中
 
-            WorkCreateRequest request = new WorkCreateRequest();
+            WorkRequest request = new WorkRequest();
             request.setTitle("新作品");
             request.setMembers(List.of(createMember("张三", 101L)));
 
@@ -182,7 +181,7 @@ class WorkServiceImplTest {
             when(deepSeekReviewService.review(anyString(), anyString()))
                     .thenReturn(DeepSeekReviewService.ReviewResult.fail("content", "包含违规内容"));
 
-            WorkCreateRequest request = new WorkCreateRequest();
+            WorkRequest request = new WorkRequest();
             request.setTitle("违规作品");
 
             // when/then
@@ -201,7 +200,7 @@ class WorkServiceImplTest {
                     .thenReturn(DeepSeekReviewService.ReviewResult.pass());
             when(workAttachmentMapper.selectCount(any())).thenReturn(1L); // 附件被占用
 
-            WorkCreateRequest request = new WorkCreateRequest();
+            WorkRequest request = new WorkRequest();
             request.setTitle("新作品");
             request.setAttachmentIds(List.of("99"));
 
@@ -223,7 +222,7 @@ class WorkServiceImplTest {
             when(deepSeekReviewService.review(anyString(), anyString()))
                     .thenReturn(DeepSeekReviewService.ReviewResult.pass());
 
-            WorkUpdateRequest request = new WorkUpdateRequest();
+            WorkRequest request = new WorkRequest();
             request.setTitle("新标题");
             request.setSummary("新简介");
 
@@ -244,7 +243,7 @@ class WorkServiceImplTest {
                 when(workMapper.selectById(1L)).thenReturn(work);
 
                 assertThrows(BusinessException.class,
-                        () -> workService.updateWork(1L, new WorkUpdateRequest()),
+                        () -> workService.updateWork(1L, new WorkRequest()),
                         "状态 " + status + " 应不可编辑");
             }
         }
@@ -256,7 +255,7 @@ class WorkServiceImplTest {
             when(workMapper.selectById(1L)).thenReturn(work);
 
             assertThrows(BusinessException.class,
-                    () -> workService.updateWork(1L, new WorkUpdateRequest()));
+                    () -> workService.updateWork(1L, new WorkRequest()));
         }
     }
 

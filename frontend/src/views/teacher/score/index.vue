@@ -13,7 +13,7 @@
       </div>
       <el-form :model="query" inline class="score-filters">
         <el-form-item label="批次">
-          <el-select v-model="query.batchId" clearable placeholder="全部批次" @change="loadList">
+          <el-select v-model="query.batchId" clearable placeholder="全部批次" style="width:200px" @change="loadList">
             <el-option v-for="b in batches" :key="b.id" :label="b.batchName" :value="b.id" />
           </el-select>
         </el-form-item>

@@ -335,6 +335,7 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
             SysUser user = userMap.get(c.getUserId());
             if (user != null) {
                 vo.setUserName(user.getRealName());
+                vo.setAvatarUrl(user.getAvatar());
                 vo.setRoleName(user.getRoleId() != null ? roleNameMap.getOrDefault(user.getRoleId().longValue(), "") : "");
             }
         } else {

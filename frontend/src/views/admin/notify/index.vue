@@ -38,8 +38,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getNotifyList, markAsRead, markAllRead } from '@/api/admin/notify'
-import type { NotifyItem } from '@/api/admin/notify'
+import { getNotifyList, markAsRead, markAllRead } from '@/api/notify'
+import type { NotifyItem } from '@/api/notify'
 
 const loading = ref(false)
 const list = ref<NotifyItem[]>([])
@@ -55,7 +55,7 @@ const emitNotifyChanged = () => {
 const loadList = async () => {
   loading.value = true
   try {
-    const res = await getNotifyList({
+    const res = await getNotifyList('admin', {
       page: page.value,
       size: size.value,
       unreadOnly: unreadOnly.value || undefined
@@ -70,7 +70,7 @@ const loadList = async () => {
 const handleRead = async (item: NotifyItem) => {
   if (!item.isRead) {
     try {
-      await markAsRead(item.id)
+      await markAsRead('admin', item.id)
       item.isRead = 1
       emitNotifyChanged()
     } catch (e) {
@@ -81,7 +81,7 @@ const handleRead = async (item: NotifyItem) => {
 
 const handleMarkAll = async () => {
   try {
-    await markAllRead()
+    await markAllRead('admin')
     list.value.forEach(i => { i.isRead = 1 })
     emitNotifyChanged()
     ElMessage.success('全部已读')
