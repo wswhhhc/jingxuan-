@@ -213,27 +213,7 @@ public class ScoreServiceImpl extends ServiceImpl<WorkScoreMapper, WorkScore> im
         summary.setWorkTitle(work != null ? work.getTitle() : null);
         summary.setTeacherCount(scores.size());
 
-        BigDecimal sumInnovation = BigDecimal.ZERO;
-        BigDecimal sumDifficulty = BigDecimal.ZERO;
-        BigDecimal sumCompletion = BigDecimal.ZERO;
-        BigDecimal sumPracticality = BigDecimal.ZERO;
-        BigDecimal sumTotal = BigDecimal.ZERO;
-
-        for (WorkScore s : scores) {
-            sumInnovation = sumInnovation.add(s.getInnovation() != null ? s.getInnovation() : BigDecimal.ZERO);
-            sumDifficulty = sumDifficulty.add(s.getDifficulty() != null ? s.getDifficulty() : BigDecimal.ZERO);
-            sumCompletion = sumCompletion.add(s.getCompletion() != null ? s.getCompletion() : BigDecimal.ZERO);
-            sumPracticality = sumPracticality.add(s.getPracticality() != null ? s.getPracticality() : BigDecimal.ZERO);
-            sumTotal = sumTotal.add(s.getTotal() != null ? s.getTotal() : BigDecimal.ZERO);
-        }
-
-        int count = scores.size();
-        summary.setAvgInnovation(sumInnovation.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
-        summary.setAvgDifficulty(sumDifficulty.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
-        summary.setAvgCompletion(sumCompletion.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
-        summary.setAvgPracticality(sumPracticality.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
-        summary.setAvgTotal(sumTotal.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
-
+        computeScoreAverages(scores, summary);
         return summary;
     }
 
@@ -263,26 +243,7 @@ public class ScoreServiceImpl extends ServiceImpl<WorkScoreMapper, WorkScore> im
             summary.setWorkTitle(work != null ? work.getTitle() : null);
             summary.setTeacherCount(workScores.size());
 
-            BigDecimal sumInnovation = BigDecimal.ZERO;
-            BigDecimal sumDifficulty = BigDecimal.ZERO;
-            BigDecimal sumCompletion = BigDecimal.ZERO;
-            BigDecimal sumPracticality = BigDecimal.ZERO;
-            BigDecimal sumTotal = BigDecimal.ZERO;
-
-            for (WorkScore s : workScores) {
-                sumInnovation = sumInnovation.add(s.getInnovation() != null ? s.getInnovation() : BigDecimal.ZERO);
-                sumDifficulty = sumDifficulty.add(s.getDifficulty() != null ? s.getDifficulty() : BigDecimal.ZERO);
-                sumCompletion = sumCompletion.add(s.getCompletion() != null ? s.getCompletion() : BigDecimal.ZERO);
-                sumPracticality = sumPracticality.add(s.getPracticality() != null ? s.getPracticality() : BigDecimal.ZERO);
-                sumTotal = sumTotal.add(s.getTotal() != null ? s.getTotal() : BigDecimal.ZERO);
-            }
-
-            int count = workScores.size();
-            summary.setAvgInnovation(sumInnovation.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
-            summary.setAvgDifficulty(sumDifficulty.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
-            summary.setAvgCompletion(sumCompletion.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
-            summary.setAvgPracticality(sumPracticality.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
-            summary.setAvgTotal(sumTotal.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
+            computeScoreAverages(workScores, summary);
 
             result.add(summary);
         }
@@ -293,6 +254,31 @@ public class ScoreServiceImpl extends ServiceImpl<WorkScoreMapper, WorkScore> im
     /**
      * 将 WorkScore 实体转换为 ScoreVO（不含 teacherName）
      */
+    
+
+    private void computeScoreAverages(List<WorkScore> scores, ScoreSummaryVO summary) {
+        BigDecimal sumInnovation = BigDecimal.ZERO;
+        BigDecimal sumDifficulty = BigDecimal.ZERO;
+        BigDecimal sumCompletion = BigDecimal.ZERO;
+        BigDecimal sumPracticality = BigDecimal.ZERO;
+        BigDecimal sumTotal = BigDecimal.ZERO;
+
+        for (WorkScore s : scores) {
+            sumInnovation = sumInnovation.add(s.getInnovation() != null ? s.getInnovation() : BigDecimal.ZERO);
+            sumDifficulty = sumDifficulty.add(s.getDifficulty() != null ? s.getDifficulty() : BigDecimal.ZERO);
+            sumCompletion = sumCompletion.add(s.getCompletion() != null ? s.getCompletion() : BigDecimal.ZERO);
+            sumPracticality = sumPracticality.add(s.getPracticality() != null ? s.getPracticality() : BigDecimal.ZERO);
+            sumTotal = sumTotal.add(s.getTotal() != null ? s.getTotal() : BigDecimal.ZERO);
+        }
+
+        int count = scores.size();
+        summary.setAvgInnovation(sumInnovation.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
+        summary.setAvgDifficulty(sumDifficulty.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
+        summary.setAvgCompletion(sumCompletion.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
+        summary.setAvgPracticality(sumPracticality.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
+        summary.setAvgTotal(sumTotal.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP));
+    }
+
     private ScoreVO convertToScoreVO(WorkScore score) {
         ScoreVO vo = new ScoreVO();
         vo.setId(score.getId());
