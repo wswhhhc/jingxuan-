@@ -49,75 +49,56 @@ public class AuditServiceImpl implements AuditService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void approve(AuditRequest request) {
-        Work work = workMapper.selectById(request.getWorkId());
-        if (work == null) {
-            throw new BusinessException("作品不存在");
-        }
-        if (work.getStatus() != AuditStatusEnum.SUBMITTED.getValue()) {
-            throw new BusinessException("当前状态不可审核通过");
-        }
-
-        // 更新作品状态为已通过
-        work.setStatus(AuditStatusEnum.APPROVED.getValue());
-        workMapper.updateById(work);
-
-        // 保存审核记录
-        WorkAudit audit = new WorkAudit();
-        audit.setWorkId(request.getWorkId());
-        audit.setAuditorId(SecurityUtils.requireCurrentUserId());
-        audit.setResult(1);
-        audit.setAuditTime(LocalDateTime.now());
-        workAuditMapper.insert(audit);
-
-        // 初始化发布记录
-        publishService.initPublish(request.getWorkId());
-
-        // 发送通知给提交者
-        notificationService.sendNotification(
-                work.getSubmitterId(),
-                "作品审核通过",
-                "您的作品《" + work.getTitle() + "》已通过审核",
-                "audit",
-                work.getId()
-        );
-
-        logService.recordAction("审核通过", "作品", work.getId());
+        doAudit(request, AuditStatusEnum.APPROVED.getValue(), 1, null,
+                "作品审核通过", "审核通过", true);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reject(AuditRequest request) {
+        doAudit(request, AuditStatusEnum.REJECTED.getValue(), 0, request.getReason(),
+                "作品审核未通过", "审核驳回", false);
+    }
+
+    /**
+     * 统一执行审核操作（通过/驳回）
+     */
+    private void doAudit(AuditRequest request, int targetStatus, int auditResult, String reason,
+                         String notifyTitle, String logAction, boolean initPublish) {
         Work work = workMapper.selectById(request.getWorkId());
         if (work == null) {
             throw new BusinessException("作品不存在");
         }
         if (work.getStatus() != AuditStatusEnum.SUBMITTED.getValue()) {
-            throw new BusinessException("当前状态不可审核驳回");
+            throw new BusinessException("当前状态不可审核");
         }
 
-        // 更新作品状态为已驳回
-        work.setStatus(AuditStatusEnum.REJECTED.getValue());
+        work.setStatus(targetStatus);
         workMapper.updateById(work);
 
-        // 保存审核记录
         WorkAudit audit = new WorkAudit();
         audit.setWorkId(request.getWorkId());
         audit.setAuditorId(SecurityUtils.requireCurrentUserId());
-        audit.setResult(0);
-        audit.setReason(request.getReason());
+        audit.setResult(auditResult);
+        audit.setReason(reason);
         audit.setAuditTime(LocalDateTime.now());
         workAuditMapper.insert(audit);
 
-        // 发送驳回通知
+        if (initPublish) {
+            publishService.initPublish(request.getWorkId());
+        }
+
+        String notifyMessage = "您的作品《" + work.getTitle() + "》"
+                + (auditResult == 1 ? "已通过审核" : "未通过审核" + (reason != null ? "，原因：" + reason : ""));
         notificationService.sendNotification(
                 work.getSubmitterId(),
-                "作品审核未通过",
-                "您的作品《" + work.getTitle() + "》未通过审核，原因：" + request.getReason(),
+                notifyTitle,
+                notifyMessage,
                 "audit",
                 work.getId()
         );
 
-        logService.recordAction("审核驳回", "作品", work.getId());
+        logService.recordAction(logAction, "作品", work.getId());
     }
 
     @Override
