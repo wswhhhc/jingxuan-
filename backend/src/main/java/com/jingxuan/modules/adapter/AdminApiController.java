@@ -20,6 +20,8 @@ import com.jingxuan.modules.notice.dto.NoticeRequest;
 import com.jingxuan.modules.notice.service.NoticeService;
 import com.jingxuan.modules.prize.service.PrizeService;
 import com.jingxuan.modules.prize.service.RewardIssueService;
+import com.jingxuan.modules.rank.dto.RankVO;
+import com.jingxuan.modules.rank.service.RankService;
 import com.jingxuan.modules.publish.dto.FeaturedRequest;
 import com.jingxuan.modules.publish.service.PublishService;
 import com.jingxuan.modules.score.dto.AdminScoreDetailVO;
@@ -66,6 +68,7 @@ public class AdminApiController {
     private final ScoreBatchService scoreBatchService;
     private final PrizeService prizeService;
     private final RewardIssueService rewardIssueService;
+    private final RankService rankService;
 
     // ==================== Dashboard ====================
 
@@ -368,6 +371,16 @@ public class AdminApiController {
         Long operatorId = body.get("operatorId");
         rewardIssueService.issue(rewardId, workId, operatorId);
         return Result.ok();
+    }
+
+    @GetMapping("/admin/prize/ranked-works")
+    @Operation(summary = "获取按分数排名的作品列表（用于发放奖品时选择）")
+    public Result<List<RankVO>> getRankedWorks(@RequestParam Long batchId,
+                                                @RequestParam(defaultValue = "50") int topN) {
+        com.jingxuan.modules.rank.dto.RankQueryRequest request = new com.jingxuan.modules.rank.dto.RankQueryRequest();
+        request.setBatchId(batchId);
+        request.setTopN(topN);
+        return Result.ok(rankService.getRankList(request));
     }
 
     @PutMapping("/admin/prize/issue/{id}/cancel")

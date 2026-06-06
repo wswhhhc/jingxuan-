@@ -71,11 +71,7 @@
                 {{ row.status === 1 ? '禁用' : '启用' }}
               </el-button>
               <el-button size="small" plain :disabled="isProtectedAdmin(row)" @click="handleResetPwd(row)">重置密码</el-button>
-              <el-popconfirm title="确认删除该用户？" @confirm="handleDelete(row)">
-                <template #reference>
-                  <el-button size="small" type="danger" plain :disabled="isProtectedAdmin(row)">删除</el-button>
-                </template>
-              </el-popconfirm>
+              <el-button size="small" type="danger" plain :disabled="isProtectedAdmin(row)" @click="handleDelete(row)">删除</el-button>
             </div>
           </template>
         </el-table-column>
@@ -400,14 +396,17 @@ const handleResetPwd = (row: UserItem) => {
   pwdDialogVisible.value = true
 }
 
-const handleDelete = async (row: UserItem) => {
-  try {
-    await deleteUser(row.id)
-    ElMessage.success('删除成功')
-    reload()
-  } catch {
-    // handled by interceptor
-  }
+const handleDelete = (row: UserItem) => {
+  if (isProtectedAdmin(row)) return
+  ElMessageBox.confirm(`确认删除用户「${row.realName}」？`, '提示', {
+    type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
+  }).then(async () => {
+    try {
+      await deleteUser(row.id)
+      ElMessage.success('删除成功')
+      reload()
+    } catch { /* handled by interceptor */ }
+  }).catch(() => {})
 }
 
 const handleSavePwd = async () => {

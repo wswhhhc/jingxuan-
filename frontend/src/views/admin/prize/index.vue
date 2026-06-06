@@ -117,31 +117,49 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="issueVisible" title="发放奖品" width="400px">
+    <el-dialog v-model="issueVisible" title="发放奖品" width="640px">
       <el-form :model="issueForm" label-width="80px">
         <el-form-item label="奖品">
-          <el-select v-model="issueForm.rewardId" placeholder="选择奖品" style="width:100%">
+          <el-select v-model="issueForm.rewardId" placeholder="选择奖品" style="width:100%" @change="onRewardChange">
             <el-option v-for="p in list" :key="p.id" :label="`${p.batchName} - ${p.rewardName}`" :value="p.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="作品ID">
-          <el-input-number v-model="issueForm.workId" :min="1" placeholder="输入作品ID" style="width:100%" />
-        </el-form-item>
       </el-form>
+
+      <div v-if="rankedWorks.length > 0" class="ranked-works">
+        <h4 style="margin:0 0 8px">选择获奖作品（按分数排名）</h4>
+        <el-table :data="rankedWorks" v-loading="rankedLoading" stripe highlight-current-row @row-click="selectRankedWork" max-height="320">
+          <el-table-column label="排名" width="60">
+            <template #default="{ row }">
+              <span v-if="row.rankNo <= 3" style="font-size:18px">{{ ['🥇', '🥈', '🥉'][row.rankNo - 1] }}</span>
+              <span v-else>{{ row.rankNo }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="workTitle" label="作品名称" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="techStack" label="技术栈" width="110" show-overflow-tooltip />
+          <el-table-column label="平均分" width="80">
+            <template #default="{ row }">
+              <span style="font-weight:600;color:var(--brand)">{{ row.avgScore }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <el-empty v-else-if="issueForm.rewardId && !rankedLoading" description="暂无排名数据，请先确认该批次已有评分" />
+
       <template #footer>
         <el-button @click="issueVisible = false">取消</el-button>
-        <el-button type="primary" :loading="issueSaving" @click="handleIssueSubmit">确认发放</el-button>
+        <el-button type="primary" :loading="issueSaving" :disabled="!selectedRankedWork" @click="handleIssueSubmit">确认发放</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/student/auth'
-import { getPrizeList, createPrize, updatePrize, deletePrize, getPrizeBatches, getIssueList, issuePrize, cancelIssue } from '@/api/admin/prize'
-import type { PrizeItem, IssueItem } from '@/api/admin/prize'
+import { getPrizeList, createPrize, updatePrize, deletePrize, getPrizeBatches, getIssueList, issuePrize, cancelIssue, getRankedWorks } from '@/api/admin/prize'
+import type { PrizeItem, IssueItem, RankedWork } from '@/api/admin/prize'
 import { useApiList } from '@/composables/useApiList'
 import { useCrudDialog } from '@/composables/useCrudDialog'
 import PaginationBar from '@/components/PaginationBar.vue'
@@ -174,10 +192,29 @@ const issueSize = ref(20)
 const issueRewardFilter = ref('')
 const issueVisible = ref(false)
 const issueSaving = ref(false)
-const issueForm = reactive({
-  rewardId: 0,
-  workId: 0
-})
+const issueForm = reactive({ rewardId: 0 })
+
+// 排名作品列表（发放奖品时选择）
+const rankedWorks = ref<RankedWork[]>([])
+const rankedLoading = ref(false)
+const selectedRankedWork = ref<RankedWork | null>(null)
+
+const onRewardChange = async (rewardId: number) => {
+  selectedRankedWork.value = null
+  rankedWorks.value = []
+  const prize = list.value.find(p => p.id === rewardId)
+  if (!prize?.batchId) return
+  rankedLoading.value = true
+  try {
+    const res = await getRankedWorks({ batchId: prize.batchId, topN: 50 })
+    rankedWorks.value = (res.data as RankedWork[]) || []
+  } catch { rankedWorks.value = [] }
+  finally { rankedLoading.value = false }
+}
+
+const selectRankedWork = (row: RankedWork) => {
+  selectedRankedWork.value = row
+}
 
 
 
@@ -253,20 +290,22 @@ const getIssueRowIndex = (index: number) => (issuePage.value - 1) * issueSize.va
 
 const showIssueDialog = () => {
   issueForm.rewardId = 0
-  issueForm.workId = 0
+  selectedRankedWork.value = null
+  rankedWorks.value = []
   issueVisible.value = true
 }
 
 const handleIssueSubmit = async () => {
-  if (!issueForm.rewardId || !issueForm.workId) {
-    ElMessage.warning('请填写完整信息')
+  if (!issueForm.rewardId || !selectedRankedWork.value) {
+    ElMessage.warning('请选择奖品和作品')
     return
   }
   issueSaving.value = true
   try {
-    await issuePrize({ rewardId: issueForm.rewardId, workId: issueForm.workId, operatorId: authStore.userInfo?.id || 0 })
-    ElMessage.success('已发放')
+    await issuePrize({ rewardId: issueForm.rewardId, workId: selectedRankedWork.value.workId, operatorId: authStore.userInfo?.id || 0 })
+    ElMessage.success(`已向「${selectedRankedWork.value.workTitle}」发放奖品`)
     issueVisible.value = false
+    selectedRankedWork.value = null
     loadIssueList()
   } catch (e) {
     console.error('发放奖品失败:', e)

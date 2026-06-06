@@ -53,3 +53,15 @@ export function issuePrize(data: { rewardId: number; workId: number; operatorId:
 export function cancelIssue(id: number) {
   return request.put(`/admin/prize/issue/${id}/cancel`)
 }
+
+export interface RankedWork {
+  rankNo: number
+  workId: number
+  workTitle: string
+  techStack: string
+  avgScore: number
+}
+
+export function getRankedWorks(params: { batchId: number; topN?: number }) {
+  return request.get<RankedWork[]>('/admin/prize/ranked-works', { params })
+}
