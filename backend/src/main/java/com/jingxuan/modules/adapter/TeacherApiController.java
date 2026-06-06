@@ -16,6 +16,9 @@ import com.jingxuan.modules.scorebatch.service.ScoreBatchService;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
 import com.jingxuan.modules.work.dto.WorkListVO;
 import com.jingxuan.security.SecurityUtils;
+
+import java.util.Collections;
+import java.util.stream.Collectors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -102,11 +105,14 @@ public class TeacherApiController {
     }
 
     @GetMapping("/teacher/ranking/list")
-    @Operation(summary = "获取排行榜")
+    @Operation(summary = "获取排行榜（仅已公示批次可见）")
     public Result<List<RankVO>> listRanking(
             @RequestParam(required = false) Long batchId,
             @RequestParam(required = false, defaultValue = "10") int topN,
             @RequestParam(required = false) String type) {
+        if (batchId != null && !scoreBatchService.isRankPublished(batchId)) {
+            return Result.ok(Collections.emptyList());
+        }
         RankQueryRequest request = new RankQueryRequest();
         request.setBatchId(batchId);
         request.setTopN(topN);
@@ -115,15 +121,20 @@ public class TeacherApiController {
     }
 
     @GetMapping("/teacher/ranking/batches")
-    @Operation(summary = "获取排行榜批次列表")
+    @Operation(summary = "获取排行榜批次列表（仅返回已公示的批次）")
     public Result<List<ScoreBatch>> listRankingBatches() {
-        return Result.ok(scoreBatchService.list());
+        List<ScoreBatch> all = scoreBatchService.list();
+        List<ScoreBatch> published = all.stream()
+                .filter(b -> Integer.valueOf(1).equals(b.getRankPublished()))
+                .collect(Collectors.toList());
+        return Result.ok(published);
     }
 
     @GetMapping("/teacher/ranking/categories")
-    @Operation(summary = "获取排行分类（技术栈）")
-    public Result<List<Map<String, String>>> listRankingCategories() {
-        return Result.ok(teacherWorkFacade.listRankingCategories());
+    @Operation(summary = "获取排行分类（技术栈，仅已公示批次的分类可见）")
+    public Result<List<Map<String, String>>> listRankingCategories(
+            @RequestParam(required = false) Long batchId) {
+        return Result.ok(teacherWorkFacade.listRankingCategories(batchId));
     }
 
     @PostMapping("/teacher/ranking/refresh")
