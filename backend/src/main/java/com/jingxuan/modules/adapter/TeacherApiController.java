@@ -105,12 +105,15 @@ public class TeacherApiController {
     }
 
     @GetMapping("/teacher/ranking/list")
-    @Operation(summary = "获取排行榜（仅已公示批次可见）")
+    @Operation(summary = "获取排行榜（必须指定批次，且仅已公示批次可见）")
     public Result<List<RankVO>> listRanking(
             @RequestParam(required = false) Long batchId,
             @RequestParam(required = false, defaultValue = "10") int topN,
             @RequestParam(required = false) String type) {
-        if (batchId != null && !scoreBatchService.isRankPublished(batchId)) {
+        if (batchId == null) {
+            return Result.ok(Collections.emptyList());
+        }
+        if (!scoreBatchService.isRankPublished(batchId)) {
             return Result.ok(Collections.emptyList());
         }
         RankQueryRequest request = new RankQueryRequest();
