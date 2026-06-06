@@ -92,7 +92,7 @@
         <el-table-column label="获奖情况" min-width="180">
           <template #default="{ row }">
             <div v-if="row.rewardLevel" class="award-cell">
-              <el-tag :type="rewardType(row.rewardLevel)" size="small">{{ row.rewardLevel }}</el-tag>
+              <el-tag :type="rewardTagType(row.rewardLevel)" size="small">{{ row.rewardLevel }}</el-tag>
               <span class="prize-name">{{ row.prizeName || row.rewardLevel }}</span>
             </div>
             <span v-else class="text-muted">-</span>
@@ -110,6 +110,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { getRankingList, getRankingBatches, getRankingCategories } from '@/api/public/ranking'
 import type { PublicRankItem } from '@/api/public/ranking'
 
+import { rewardTagType } from '@/utils/format'
 const loading = ref(false)
 const list = ref<PublicRankItem[]>([])
 const batches = ref<{ batchId: number; batchName: string }[]>([])
@@ -119,11 +120,6 @@ const query = reactive({
   batchId: undefined as number | undefined,
   category: undefined as string | undefined,
 })
-
-const rewardType = (l: string) => {
-  const map: Record<string, string> = { '一等奖': 'danger', '二等奖': 'warning', '三等奖': '', '优秀奖': 'info' }
-  return map[l] || ''
-}
 
 const loadBatches = async () => {
   try {

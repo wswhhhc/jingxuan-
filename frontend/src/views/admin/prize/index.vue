@@ -20,7 +20,7 @@
             <el-table-column prop="batchName" label="批次" width="140" />
             <el-table-column prop="rewardLevel" label="等级" width="80">
               <template #default="{ row }">
-                <el-tag :type="levelType(row.rewardLevel)" size="small">{{ row.rewardLevel }}</el-tag>
+                <el-tag :type="rewardTagType(row.rewardLevel)" size="small">{{ row.rewardLevel }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="rewardName" label="奖项名称" width="120" />
@@ -146,6 +146,7 @@ import { useApiList } from '@/composables/useApiList'
 import { useCrudDialog } from '@/composables/useCrudDialog'
 import PaginationBar from '@/components/PaginationBar.vue'
 
+import { rewardTagType } from '@/utils/format'
 const authStore = useAuthStore()
 
 const activeTab = ref('config')
@@ -178,10 +179,7 @@ const issueForm = reactive({
   workId: 0
 })
 
-const levelType = (l: string) => {
-  const map: Record<string, string> = { '一等奖': 'danger', '二等奖': 'warning', '三等奖': '', '优秀奖': 'info' }
-  return map[l] || ''
-}
+
 
 const loadBatches = async () => {
   try {

@@ -60,7 +60,7 @@
         </el-table-column>
         <el-table-column label="获奖等级" width="100">
           <template #default="{ row }">
-            <el-tag v-if="row.rewardLevel" :type="rewardType(row.rewardLevel)" size="small">{{ row.rewardLevel }}</el-tag>
+            <el-tag v-if="row.rewardLevel" :type="rewardTagType(row.rewardLevel)" size="small">{{ row.rewardLevel }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="teacherCount" label="评分教师数" width="90" />
@@ -83,6 +83,7 @@ import { getRanking, getRankingBatches, getRankingCategories, refreshRanking } f
 import type { RankingItem, CategoryItem } from '@/api/teacher/ranking'
 import { useApiList } from '@/composables/useApiList'
 
+import { rewardTagType } from '@/utils/format'
 const batches = ref<{ id: number; batchName: string }[]>([])
 const categories = ref<CategoryItem[]>([])
 
@@ -96,10 +97,7 @@ const { loading, list, loadList } = useApiList<RankingItem>(getRanking, data => 
 }))
 const reload = () => loadList({ ...query, topN: 50 })
 
-const rewardType = (l: string) => {
-  const map: Record<string, string> = { '一等奖': 'danger', '二等奖': 'warning', '三等奖': '', '优秀奖': 'info' }
-  return map[l] || ''
-}
+
 
 const loadBatches = async () => {
   try {
