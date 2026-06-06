@@ -1,6 +1,5 @@
 package com.jingxuan.modules.work.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.jingxuan.entity.ScoreBatch;
@@ -18,7 +17,6 @@ import com.jingxuan.modules.work.service.WorkMemberService;
 import com.jingxuan.security.SecurityUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -157,7 +155,6 @@ class WorkServiceImplTest {
         }
 
         @Test
-        @Disabled("Mockito + MyBatis-Plus LambdaQueryWrapper 序列化兼容问题，需在集成测试中验证")
         @DisplayName("团队成员已在同一批次其他作品中抛异常")
         void shouldThrowWhenMemberAlreadyInBatch() {
             // given
@@ -166,7 +163,7 @@ class WorkServiceImplTest {
             activeBatch.setStatus(1);
             when(scoreBatchMapper.selectOne(any())).thenReturn(activeBatch);
             when(workMapper.selectCount(any())).thenReturn(0L); // 提交者无作品
-            doReturn(List.of(99L)).when(workMapper).selectObjs(any(Wrapper.class)); // 批次内有其他作品
+            lenient().when(workMapper.selectObjs(any())).thenReturn(List.of(99L)); // 批次内有其他作品
             when(workMemberMapper.selectCount(any())).thenReturn(1L); // 成员已在其他作品中
             when(deepSeekReviewService.review(anyString(), anyString()))
                     .thenReturn(DeepSeekReviewService.ReviewResult.pass());

@@ -42,13 +42,13 @@ class WorkMemberPolicyService {
         if (CollectionUtil.isEmpty(members) || batchId == null) {
             return;
         }
-        // 安全查询：先查出该批次下的所有作品 ID（参数化查询，避免 SQL 注入）
+        // 安全查询：先查出该批次下的所有作品 ID（使用 QueryWrapper 避免 Mockito 下 lambda 序列化失败）
         List<Object> batchWorkIds = workMapper.selectObjs(
-                Wrappers.<Work>lambdaQuery()
-                        .select(Work::getId)
-                        .eq(Work::getBatchId, batchId)
-                        .eq(Work::getDeleted, 0)
-                        .ne(currentWorkId != null, Work::getId, currentWorkId));
+                Wrappers.<Work>query()
+                        .select("id")
+                        .eq("batch_id", batchId)
+                        .eq("deleted", 0)
+                        .ne(currentWorkId != null, "id", currentWorkId));
         if (batchWorkIds.isEmpty()) {
             return;
         }
