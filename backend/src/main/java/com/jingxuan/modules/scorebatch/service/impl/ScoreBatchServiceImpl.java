@@ -1,8 +1,5 @@
 package com.jingxuan.modules.scorebatch.service.impl;
 
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONArray;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -26,8 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -39,10 +36,10 @@ import java.util.stream.Collectors;
 public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBatch> implements ScoreBatchService {
 
     private final WorkMapper workMapper;
-    private final SysUserMapper sysUserMapper;
-    private final SysDictMapper sysDictMapper;
     private final NotificationService notificationService;
     private final RankService rankService;
+    private final SysUserMapper sysUserMapper;
+    private final SysDictMapper sysDictMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -91,61 +88,6 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
                 .orderByDesc(ScoreBatch::getCreateTime)
                 .last("LIMIT 1")
                 .one();
-    }
-
-    @Override
-    public List<ScoreBatch> getAvailableBatchesForStudent(Long userId) {
-        // 获取当前学生的班级 dict_value
-        SysUser user = sysUserMapper.selectById(userId);
-        if (user == null || user.getClassId() == null) {
-            return Collections.emptyList();
-        }
-        SysDict classDict = sysDictMapper.selectById(user.getClassId());
-        if (classDict == null || StrUtil.isBlank(classDict.getDictValue())) {
-            return Collections.emptyList();
-        }
-        String userClassValue = classDict.getDictValue();
-
-        // 查询所有进行中的批次（status=1）
-        List<ScoreBatch> activeBatches = lambdaQuery()
-                .eq(ScoreBatch::getStatus, 1)
-                .orderByDesc(ScoreBatch::getCreateTime)
-                .list();
-
-        // 过滤出该学生班级可参与的批次
-        return activeBatches.stream()
-                .filter(batch -> isClassInScope(userClassValue, batch.getClassScopes()))
-                .collect(Collectors.toList());
-    }
-
-    private boolean isClassInScope(String userClassValue, String classScopes) {
-        if (StrUtil.isBlank(classScopes)) {
-            return true; // 未设置范围则所有班级可参与
-        }
-        String trimmed = classScopes.trim();
-        if ("全校可参与".equals(trimmed) || "全校".equals(trimmed) || "all".equalsIgnoreCase(trimmed)) {
-            return true;
-        }
-        List<String> scopeList = parseClassScopes(trimmed);
-        return scopeList.stream().anyMatch(s -> s.equals(userClassValue));
-    }
-
-    private List<String> parseClassScopes(String classScopes) {
-        String trimmed = classScopes.trim();
-        if (trimmed.startsWith("[")) {
-            try {
-                JSONArray jsonArray = JSONUtil.parseArray(trimmed);
-                return jsonArray.stream()
-                        .map(Object::toString)
-                        .filter(StrUtil::isNotBlank)
-                        .collect(Collectors.toList());
-            } catch (Exception ignored) {
-            }
-        }
-        return Arrays.stream(trimmed.split("[,，]"))
-                .map(String::trim)
-                .filter(StrUtil::isNotBlank)
-                .collect(Collectors.toList());
     }
 
     @Override
@@ -217,5 +159,99 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
         }
         LocalDateTime now = LocalDateTime.now();
         return !now.isBefore(batch.getStartTime()) && !now.isAfter(batch.getEndTime());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveNotice(Long batchId, String noticeTitle, String noticeContent) {
+        ScoreBatch batch = baseMapper.selectById(batchId);
+        if (batch == null) {
+            throw new BusinessException("评分批次不存在");
+        }
+        batch.setNoticeTitle(noticeTitle);
+        batch.setNoticeContent(noticeContent);
+        baseMapper.updateById(batch);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void publishNotice(Long batchId) {
+        ScoreBatch batch = baseMapper.selectById(batchId);
+        if (batch == null) {
+            throw new BusinessException("评分批次不存在");
+        }
+        if (batch.getNoticeTitle() == null || batch.getNoticeContent() == null) {
+            throw new BusinessException("请先填写通知内容");
+        }
+
+        // 解析班级范围
+        Set<Long> classIdSet = parseClassScopes(batch.getClassScopes());
+        if (classIdSet.isEmpty()) {
+            throw new BusinessException("该批次未设置班级范围，无法发送通知");
+        }
+
+        // 查找班级范围内所有启用状态的学生（按 class_id 匹配）
+        List<SysUser> students = sysUserMapper.selectList(
+                Wrappers.<SysUser>lambdaQuery()
+                        .eq(SysUser::getRoleId, 1) // 学生角色
+                        .eq(SysUser::getStatus, 1)
+                        .eq(SysUser::getDeleted, 0)
+                        .in(SysUser::getClassId, classIdSet));
+        if (students.isEmpty()) {
+            throw new BusinessException("班级范围内暂无学生用户");
+        }
+
+        List<Long> userIds = students.stream()
+                .map(SysUser::getId)
+                .collect(Collectors.toList());
+
+        notificationService.sendBatchNotification(
+                userIds,
+                batch.getNoticeTitle(),
+                batch.getNoticeContent(),
+                "BATCH_NOTICE",
+                batchId
+        );
+
+        log.info("批次通知已发布: batchId={}, title={}, 接收学生数={}", batchId, batch.getNoticeTitle(), userIds.size());
+    }
+
+    /**
+     * 解析批次的班级范围，返回 class_id 的集合
+     * classScopes 格式示例：'["2022_soft_1","2022_soft_2"]' 或 '全校可参与'
+     */
+    private Set<Long> parseClassScopes(String classScopes) {
+        if (classScopes == null || classScopes.isBlank()) {
+            return Set.of();
+        }
+        String trimmed = classScopes.trim();
+        // 全校可参与
+        if ("全校可参与".equals(trimmed) || "全校".equals(trimmed) || "all".equalsIgnoreCase(trimmed)) {
+            // 查询所有班级
+            List<SysDict> allClasses = sysDictMapper.selectList(
+                    Wrappers.<SysDict>lambdaQuery()
+                            .eq(SysDict::getDictType, "class")
+                            .eq(SysDict::getDeleted, 0));
+            return allClasses.stream()
+                    .map(SysDict::getId)
+                    .collect(Collectors.toSet());
+        }
+        // 按班级 dict_value 匹配：查询 sys_dict 获取对应的 id
+        String[] scopeItems = trimmed.replace("[", "").replace("]", "").replace("\"", "").split("[,，]");
+        Set<String> scopeValues = Arrays.stream(scopeItems)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
+        if (scopeValues.isEmpty()) {
+            return Set.of();
+        }
+        List<SysDict> matchedDicts = sysDictMapper.selectList(
+                Wrappers.<SysDict>lambdaQuery()
+                        .eq(SysDict::getDictType, "class")
+                        .in(SysDict::getDictValue, scopeValues)
+                        .eq(SysDict::getDeleted, 0));
+        return matchedDicts.stream()
+                .map(SysDict::getId)
+                .collect(Collectors.toSet());
     }
 }

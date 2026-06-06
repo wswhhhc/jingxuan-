@@ -35,5 +35,5 @@ public interface WorkMapper extends BaseMapper<Work> {
     /**
      * 查询作品在同批次中的排名
      */
-    Integer selectWorkRank(@Param("batchId") Long batchId, @Param("workId") Long workId);
+    Integer selectWorkRank(@Param("workId") Long workId, @Param("batchId") Long batchId);
 }

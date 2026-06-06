@@ -48,15 +48,15 @@ public class SecurityConfig {
                     .requestMatchers("/doc.html", "/swagger-ui/**", "/v3/api-docs/**",
                             "/webjars/**", "/favicon.ico").permitAll()
                     // 认证接口（兼容前端 /api 代理）
-                    .requestMatchers("/auth/login", "/api/auth/login").permitAll()
-                    .requestMatchers("/auth/register", "/api/auth/register").permitAll()
-                    .requestMatchers("/auth/send-code", "/api/auth/send-code").permitAll()
+                    .requestMatchers("/auth/login", "/api/auth/login",
+                            "/auth/register", "/api/auth/register",
+                            "/auth/send-code", "/api/auth/send-code").permitAll()
                     // 静态资源
                     .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                     // 前台公开展示接口
                     .requestMatchers("/public/**").permitAll()
-                    // 公共评论列表及游客评论
-                    .requestMatchers("/comment/**", "/api/comment/**").permitAll()
+                    // 公共评论列表
+                    .requestMatchers(HttpMethod.GET, "/comment/list/**").permitAll()
                     // 其它接口需认证
                     .anyRequest().authenticated()
             )

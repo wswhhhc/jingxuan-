@@ -115,7 +115,17 @@ public class TeacherWorkFacade {
         return data;
     }
 
-    public List<Map<String, String>> listRankingCategories() {
+    /**
+     * 获取排行分类（技术栈），仅包含已公示批次的分类数据
+     */
+    public List<Map<String, String>> listRankingCategories(Long batchId) {
+        // 如果指定了批次，检查是否已公示
+        if (batchId != null) {
+            ScoreBatch batch = scoreBatchService.getById(batchId);
+            if (batch == null || !Integer.valueOf(1).equals(batch.getRankPublished())) {
+                return Collections.emptyList();
+            }
+        }
         return workService.list().stream()
                 .map(Work::getTechStack)
                 .filter(Objects::nonNull)

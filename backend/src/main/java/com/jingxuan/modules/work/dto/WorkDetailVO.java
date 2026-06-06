@@ -73,25 +73,25 @@ public class WorkDetailVO {
     @Schema(description = "是否精选")
     private Integer featured;
 
-    @Schema(description = "平均分（审核通过且有评分时）")
+    @Schema(description = "平均分（审核通过且有评分时，仅排行榜已公示时显示）")
     private String avgScore;
 
-    @Schema(description = "排名（有评分时）")
+    @Schema(description = "排名（仅排行榜已公示时显示）")
     private Integer rank;
 
-    @Schema(description = "平均创新性")
+    @Schema(description = "平均创新性得分（仅排行榜已公示时显示）")
     private String avgInnovation;
 
-    @Schema(description = "平均技术难度")
+    @Schema(description = "平均技术难度得分（仅排行榜已公示时显示）")
     private String avgDifficulty;
 
-    @Schema(description = "平均完成度")
+    @Schema(description = "平均完成度得分（仅排行榜已公示时显示）")
     private String avgCompletion;
 
-    @Schema(description = "平均实用性")
+    @Schema(description = "平均实用性得分（仅排行榜已公示时显示）")
     private String avgPracticality;
 
-    @Schema(description = "评分教师数")
+    @Schema(description = "评分教师数（仅排行榜已公示时显示）")
     private Integer teacherCount;
 
     @Schema(description = "点赞数")

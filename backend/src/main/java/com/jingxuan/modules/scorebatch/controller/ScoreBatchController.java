@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * 评分批次管理接口
  */
@@ -70,5 +72,19 @@ public class ScoreBatchController {
     public Result<Object> getActive() {
         Object batch = scoreBatchService.getActiveBatch();
         return Result.ok(batch);
+    }
+
+    @Operation(summary = "保存批次通知内容")
+    @PutMapping("/{id}/notice")
+    public Result<Void> saveNotice(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        scoreBatchService.saveNotice(id, body.get("noticeTitle"), body.get("noticeContent"));
+        return Result.ok();
+    }
+
+    @Operation(summary = "发布批次通知（发送给班级范围内所有学生）")
+    @PostMapping("/{id}/publish-notice")
+    public Result<Void> publishNotice(@PathVariable Long id) {
+        scoreBatchService.publishNotice(id);
+        return Result.ok();
     }
 }

@@ -36,9 +36,6 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
     @Select("SELECT COUNT(1) FROM sys_user WHERE username = #{username} AND deleted = 0")
     int countByUsername(@Param("username") String username);
 
-    /**
-     * 检查邮箱是否已存在
-     */
     @Select("SELECT COUNT(1) FROM sys_user WHERE email = #{email} AND deleted = 0")
     int countByEmail(@Param("email") String email);
 }

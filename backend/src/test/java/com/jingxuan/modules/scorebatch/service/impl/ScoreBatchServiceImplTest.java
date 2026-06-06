@@ -28,16 +28,18 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.jingxuan.entity.ScoreBatch;
+
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ScoreBatchServiceImpl - 评分批次服务")
 class ScoreBatchServiceImplTest {
 
     @Mock private ScoreBatchMapper scoreBatchMapper;
     @Mock private WorkMapper workMapper;
-    @Mock private SysUserMapper sysUserMapper;
-    @Mock private SysDictMapper sysDictMapper;
     @Mock private NotificationService notificationService;
     @Mock private RankService rankService;
+    @Mock private SysUserMapper sysUserMapper;
+    @Mock private SysDictMapper sysDictMapper;
 
     @Captor private ArgumentCaptor<ScoreBatch> batchCaptor;
 
@@ -47,7 +49,7 @@ class ScoreBatchServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        scoreBatchService = new ScoreBatchServiceImpl(workMapper, sysUserMapper, sysDictMapper, notificationService, rankService);
+        scoreBatchService = new ScoreBatchServiceImpl(workMapper, notificationService, rankService, sysUserMapper, sysDictMapper);
         ReflectionTestUtils.setField(scoreBatchService, "baseMapper", scoreBatchMapper);
     }
 
