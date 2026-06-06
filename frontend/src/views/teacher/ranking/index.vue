@@ -66,7 +66,10 @@
         <el-table-column prop="teacherCount" label="评分教师数" width="90" />
       </el-table>
 
-      <div v-if="list.length === 0 && !loading" class="workspace-empty">
+      <div v-if="!query.batchId && !loading" class="workspace-empty">
+        <el-empty description="请先选择批次查看排行" />
+      </div>
+      <div v-else-if="list.length === 0 && !loading" class="workspace-empty">
         <el-empty description="暂无排行数据，请先确认已有评分结果" />
       </div>
     </section>
@@ -143,7 +146,7 @@ const handleRefresh = async () => {
   }
 }
 
-onMounted(() => { loadBatches(); loadCategories(); loadList() })
+onMounted(() => { loadBatches(); loadCategories() })
 </script>
 
 <style scoped>
