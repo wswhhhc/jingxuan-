@@ -1,16 +1,23 @@
 package com.jingxuan.modules.auth.controller;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.jingxuan.common.Result;
+import com.jingxuan.entity.ScoreBatch;
+import com.jingxuan.entity.SysDict;
 import com.jingxuan.entity.SysUser;
 import com.jingxuan.enums.UserStatusEnum;
+import com.jingxuan.mapper.ScoreBatchMapper;
+import com.jingxuan.mapper.SysDictMapper;
 import com.jingxuan.mapper.SysUserMapper;
+import com.jingxuan.modules.notification.service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/auth")
@@ -24,6 +31,15 @@ public class RegistrationController {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private ScoreBatchMapper scoreBatchMapper;
+
+    @Autowired
+    private SysDictMapper sysDictMapper;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @PostMapping("/register")
     public Result<Map<String, Object>> register(@RequestBody Map<String, Object> body) {
@@ -94,9 +110,9 @@ public class RegistrationController {
         user.setFirstLogin(false);
 
         // 校验并解析 classId（学生必选班级）
+        Long classId = null;
         if (roleId == 1) {
             Object classIdObj = body.get("classId");
-            Long classId = null;
             if (classIdObj instanceof Number) {
                 classId = ((Number) classIdObj).longValue();
             } else if (classIdObj instanceof String && !((String) classIdObj).isEmpty()) {
@@ -112,6 +128,11 @@ public class RegistrationController {
             sysUserMapper.insert(user);
             redisTemplate.delete(verifyKey);
 
+            // 新学生注册后自动获取批次通知
+            if (roleId == 1 && classId != null) {
+                generateBatchNoticesForNewStudent(user.getId(), classId);
+            }
+
             Map<String, Object> result = new HashMap<>();
             result.put("id", user.getId());
             result.put("username", user.getUsername());
@@ -123,6 +144,59 @@ public class RegistrationController {
                 return Result.error("该邮箱或用户名已被注册");
             }
             throw e;
+        }
+    }
+
+    /**
+     * 为学生生成批次通知（新注册时调用）
+     */
+    private void generateBatchNoticesForNewStudent(Long studentId, Long classId) {
+        // 查询该班级所属的 dict_value（用于匹配 classScopes）
+        SysDict classDict = sysDictMapper.selectById(classId);
+        if (classDict == null) return;
+
+        String classValue = classDict.getDictValue();
+        if (classValue == null || classValue.isBlank()) return;
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // 查询所有活跃且有通知内容的批次
+        List<ScoreBatch> activeBatches = scoreBatchMapper.selectList(
+                Wrappers.<ScoreBatch>lambdaQuery()
+                        .eq(ScoreBatch::getStatus, 1)
+                        .eq(ScoreBatch::getDeleted, 0)
+                        .le(ScoreBatch::getStartTime, now)
+                        .ge(ScoreBatch::getEndTime, now)
+                        .isNotNull(ScoreBatch::getNoticeTitle)
+                        .isNotNull(ScoreBatch::getNoticeContent));
+
+        for (ScoreBatch batch : activeBatches) {
+            String scopes = batch.getClassScopes();
+            if (scopes == null || scopes.isBlank()) continue;
+
+            // 检查班级是否在批次范围内
+            boolean inScope = false;
+            String trimmed = scopes.trim();
+            if ("全校可参与".equals(trimmed) || "全校".equals(trimmed) || "all".equalsIgnoreCase(trimmed)) {
+                inScope = true;
+            } else {
+                Set<String> scopeValues = Arrays.stream(
+                        trimmed.replace("[", "").replace("]", "").replace("\"", "").split("[,，]"))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toSet());
+                inScope = scopeValues.contains(classValue);
+            }
+
+            if (inScope) {
+                notificationService.sendNotification(
+                        studentId,
+                        batch.getNoticeTitle(),
+                        batch.getNoticeContent(),
+                        "BATCH_NOTICE",
+                        batch.getId()
+                );
+            }
         }
     }
 }
