@@ -81,6 +81,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { HomeFilled, Reading, EditPen, TrendCharts, Bell, ArrowDown } from '@element-plus/icons-vue'
 import { getUnreadCount } from '@/api/teacher/notify'
+import { useNotificationPolling } from '@/composables/useNotificationPolling'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 import type { UserInfo } from '@/api/types'
 import { clearAuthStorage, getCachedUserInfo } from '@/utils/auth'
@@ -88,9 +89,10 @@ import { clearAuthStorage, getCachedUserInfo } from '@/utils/auth'
 const route = useRoute()
 const router = useRouter()
 const userInfo = ref<UserInfo | null>(getCachedUserInfo())
-const unreadCount = ref(0)
-let unreadTimer: ReturnType<typeof setInterval> | null = null
-const hasUnread = computed(() => unreadCount.value > 0)
+const { unreadCount, hasUnread } = useNotificationPolling({
+  fetchFn: () => getUnreadCount().then(r => r.data as { count: number }),
+  eventName: 'teacher-notify-changed',
+})
 const avatarFallback = computed(() => userInfo.value?.realName?.charAt?.(0) || '师')
 const syncUserInfo = () => {
   userInfo.value = getCachedUserInfo()
@@ -104,27 +106,13 @@ const descriptions: Record<string, string> = {
   '/teacher/notify': '集中查看系统通知与待处理提醒。',
 }
 
-const fetchUnread = async () => {
-  try {
-    const res = await getUnreadCount()
-    unreadCount.value = Number((res.data as any)?.count ?? 0)
-  } catch {
-    unreadCount.value = 0
-  }
-}
-
 onMounted(() => {
   syncUserInfo()
-  fetchUnread()
-  unreadTimer = setInterval(fetchUnread, 30000)
-  window.addEventListener('teacher-notify-changed', fetchUnread)
   window.addEventListener('focus', syncUserInfo)
   window.addEventListener('storage', syncUserInfo)
 })
 
 onUnmounted(() => {
-  if (unreadTimer) clearInterval(unreadTimer)
-  window.removeEventListener('teacher-notify-changed', fetchUnread)
   window.removeEventListener('focus', syncUserInfo)
   window.removeEventListener('storage', syncUserInfo)
 })

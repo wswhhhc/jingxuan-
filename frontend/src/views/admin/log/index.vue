@@ -49,15 +49,7 @@
         <el-table-column prop="createTime" label="操作时间" width="170" />
       </el-table>
 
-      <div class="workspace-pagination">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="size"
-          :total="total"
-          layout="total, prev, pager, next"
-          @change="loadList"
-        />
-      </div>
+      <PaginationBar v-model:page="page" v-model:size="size" :total="total" @change="reload" />
     </section>
   </div>
 </template>
@@ -66,37 +58,23 @@
 import { ref, onMounted } from 'vue'
 import { getLogList } from '@/api/admin/log'
 import type { LogItem } from '@/api/admin/log'
+import { useApiList } from '@/composables/useApiList'
+import PaginationBar from '@/components/PaginationBar.vue'
 
-const loading = ref(false)
-const list = ref<LogItem[]>([])
-const total = ref(0)
 const page = ref(1)
 const size = ref(20)
 const actionFilter = ref('')
+const { loading, list, total, loadList } = useApiList<LogItem>(getLogList)
+const reload = () => loadList({ page: page.value, size: size.value, action: actionFilter.value || undefined })
 
 const methodTagType = (method: string) => {
   const map: Record<string, string> = { GET: 'success', POST: 'primary', PUT: 'warning', DELETE: 'danger' }
   return map[method] || 'info'
 }
 
-const loadList = async () => {
-  loading.value = true
-  try {
-    const res = await getLogList({
-      page: page.value,
-      size: size.value,
-      action: actionFilter.value || undefined
-    })
-    list.value = res.data?.records || res.data || []
-    total.value = res.data?.total || 0
-  } finally {
-    loading.value = false
-  }
-}
-
 const getRowIndex = (index: number) => (page.value - 1) * size.value + index + 1
 
-onMounted(loadList)
+onMounted(reload)
 </script>
 
 <style scoped>

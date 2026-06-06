@@ -4,9 +4,11 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.jingxuan.entity.SysUser;
+import com.jingxuan.entity.Work;
 import com.jingxuan.entity.WorkMember;
 import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.SysUserMapper;
+import com.jingxuan.mapper.WorkMapper;
 import com.jingxuan.mapper.WorkMemberMapper;
 import com.jingxuan.modules.work.dto.WorkMemberDTO;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ class WorkMemberPolicyService {
 
     private final SysUserMapper sysUserMapper;
     private final WorkMemberMapper workMemberMapper;
+    private final WorkMapper workMapper;
 
     void resolveMemberStudentIds(List<WorkMemberDTO> members) {
         if (CollectionUtil.isEmpty(members)) {
@@ -39,18 +42,24 @@ class WorkMemberPolicyService {
         if (CollectionUtil.isEmpty(members) || batchId == null) {
             return;
         }
+        // 安全查询：先查出该批次下的所有作品 ID（参数化查询，避免 SQL 注入）
+        List<Object> batchWorkIds = workMapper.selectObjs(
+                Wrappers.<Work>lambdaQuery()
+                        .select(Work::getId)
+                        .eq(Work::getBatchId, batchId)
+                        .eq(Work::getDeleted, 0)
+                        .ne(currentWorkId != null, Work::getId, currentWorkId));
+        if (batchWorkIds.isEmpty()) {
+            return;
+        }
         for (WorkMemberDTO member : members) {
             if (member.getStudentId() == null) {
                 continue;
             }
-            String workFilter = "SELECT id FROM work WHERE batch_id = " + batchId + " AND deleted = 0";
-            if (currentWorkId != null) {
-                workFilter = "SELECT id FROM work WHERE id != " + currentWorkId + " AND batch_id = " + batchId + " AND deleted = 0";
-            }
             Long memberCount = workMemberMapper.selectCount(
                     Wrappers.<WorkMember>lambdaQuery()
                             .eq(WorkMember::getStudentId, member.getStudentId())
-                            .inSql(WorkMember::getWorkId, workFilter));
+                            .in(WorkMember::getWorkId, batchWorkIds));
             if (memberCount > 0) {
                 throw new BusinessException("团队成员 " + member.getStudentName() + " 在当前批次中已有作品，每个学生只能参与一个作品");
             }

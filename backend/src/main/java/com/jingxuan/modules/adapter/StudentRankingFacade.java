@@ -1,5 +1,6 @@
 package com.jingxuan.modules.adapter;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.Work;
 import com.jingxuan.enums.AuditStatusEnum;
@@ -61,7 +62,12 @@ public class StudentRankingFacade {
         Set<Long> batchIds = works.stream()
                 .map(Work::getBatchId)
                 .collect(Collectors.toSet());
-        return scoreBatchMapper.selectBatchIds(batchIds).stream()
+        // 只返回 rank_published = 1 的已公示批次，未公示的排名对学生不可见
+        List<ScoreBatch> publishedBatches = scoreBatchMapper.selectList(
+                Wrappers.<ScoreBatch>lambdaQuery()
+                        .in(ScoreBatch::getId, batchIds)
+                        .eq(ScoreBatch::getRankPublished, 1));
+        return publishedBatches.stream()
                 .collect(Collectors.toMap(ScoreBatch::getId, batch -> batch));
     }
 

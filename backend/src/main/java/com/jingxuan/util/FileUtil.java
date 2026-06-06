@@ -59,7 +59,7 @@ public class FileUtil {
     }
 
     /**
-     * 粗略校验 MIME 类型
+     * 粗略校验 MIME 类型（基于客户端声明，仅做辅助校验）
      */
     public static boolean isAllowedMimeType(String mimeType) {
         if (StrUtil.isBlank(mimeType)) return false;
@@ -72,5 +72,42 @@ public class FileUtil {
                 || "application/vnd.rar".equals(mimeType)
                 || "application/x-7z-compressed".equals(mimeType)
                 || "application/pdf".equals(mimeType);
+    }
+
+    /**
+     * 基于文件魔数检测真实类型，防止扩展名伪造
+     *
+     * @param in 文件输入流（调用方负责关闭）
+     * @return 真实类型（如 "jpg", "png", "zip"），无法识别时返回 null
+     */
+    public static String detectRealType(InputStream in) {
+        try {
+            return FileTypeUtil.getType(in);
+        } catch (Exception e) {
+            log.warn("文件真实类型检测异常: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 验证真实类型与声明的扩展名是否一致
+     *
+     * @param realType   基于文件魔数检测到的真实类型
+     * @param declaredExt 文件扩展名（小写）
+     * @return true 如果类型不匹配
+     */
+    public static boolean isRealTypeMismatch(String realType, String declaredExt) {
+        if (realType == null) return false; // 无法检测时放行
+
+        // jpeg/jpg 互为别名
+        if ("jpeg".equals(realType) && "jpg".equals(declaredExt)) return false;
+        if ("jpg".equals(realType) && "jpeg".equals(declaredExt)) return false;
+
+        // 禁止 HTML/JS/SVG/XML 伪装成图片或其它格式（XSS 向量）
+        if (Set.of("html", "htm", "js", "svg", "xml").contains(realType.toLowerCase())) {
+            return true;
+        }
+
+        return !realType.equalsIgnoreCase(declaredExt);
     }
 }

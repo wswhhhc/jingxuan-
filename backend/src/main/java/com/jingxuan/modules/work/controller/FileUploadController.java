@@ -64,16 +64,29 @@ public class FileUploadController {
 
         // 校验扩展名
         FileUtil.validateExtension(originalName);
+        String ext = FileUtil.getExtension(originalName);
 
-        // 校验 MIME 类型
+        // 校验 MIME 类型（基于客户端声明，仅做辅助校验）
         String mimeType = file.getContentType();
         if (mimeType != null && !mimeType.isEmpty() && !FileUtil.isAllowedMimeType(mimeType)) {
             return Result.fail("不支持的文件类型: " + mimeType);
         }
 
+        // 基于文件魔数检测真实类型，防止扩展名伪造
+        // getInputStream() 可重复调用，不影响后续 file.transferTo()
+        try (java.io.InputStream in = file.getInputStream()) {
+            String realType = FileUtil.detectRealType(in);
+            if (FileUtil.isRealTypeMismatch(realType, ext)) {
+                log.warn("文件类型不匹配: 声明为 .{}, 实际为 {}, fileName={}", ext, realType, originalName);
+                return Result.fail("文件内容与扩展名不匹配，已拦截");
+            }
+        } catch (java.io.IOException e) {
+            log.warn("文件类型检测流读取异常: {}", e.getMessage());
+            // 检测失败时仅依赖扩展名校验，不拦截上传
+        }
+
         // 校验文件大小
         long size = file.getSize();
-        String ext = FileUtil.getExtension(originalName);
         if (isImage(ext) && size > CommonConstants.IMAGE_MAX_SIZE) {
             return Result.fail("图片文件不能超过10MB");
         }

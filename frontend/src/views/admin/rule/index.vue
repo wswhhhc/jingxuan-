@@ -37,15 +37,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="workspace-pagination">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="size"
-          :total="total"
-          layout="total, prev, pager, next"
-          @change="loadList"
-        />
-      </div>
+      <PaginationBar v-model:page="page" v-model:size="size" :total="total" @change="reload" />
     </section>
 
     <el-dialog v-model="editVisible" :title="isEdit ? '编辑规则' : '新增规则'" width="700px">
@@ -83,18 +75,19 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useCrudDialog } from '@/composables/useCrudDialog'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getRuleList, createRule, updateRule, deleteRule, testConnection } from '@/api/admin/rule'
 import type { RuleItem } from '@/api/admin/rule'
+import { useApiList } from '@/composables/useApiList'
+import PaginationBar from '@/components/PaginationBar.vue'
 
-const loading = ref(false)
-const list = ref<RuleItem[]>([])
-const total = ref(0)
 const page = ref(1)
 const size = ref(20)
-const editVisible = ref(false)
-const isEdit = ref(false)
-const editId = ref(0)
+const { loading, list, total, loadList } = useApiList<RuleItem>(params => getRuleList(params))
+const reload = () => loadList({ page: page.value, size: size.value })
+
+const { editVisible, isEdit, editId, openCreate, openEdit, save } = useCrudDialog()
 const form = reactive({
   ruleName: '',
   systemPrompt: '你是一个内容安全审核助手。请检测以下文本是否包含违规内容。违规类别包括：色情、暴力、辱骂、政治敏感、广告引流。返回JSON格式：{"passed": true/false, "category": "违规类别", "reason": "具体原因"}',
@@ -102,34 +95,20 @@ const form = reactive({
   onRejectAction: 'reject'
 })
 
-const loadList = async () => {
-  loading.value = true
-  try {
-    const res = await getRuleList({ page: page.value, size: size.value })
-    list.value = res.data?.records || res.data || []
-    total.value = res.data?.total || 0
-  } finally {
-    loading.value = false
-  }
-}
-
 const showEdit = (row?: RuleItem) => {
   if (row) {
-    isEdit.value = true
-    editId.value = row.id
+    openEdit(row.id)
     form.ruleName = row.ruleName
     form.systemPrompt = row.systemPrompt
     form.enabledCategories = (row.enabledCategories || '').split(',').filter(Boolean)
     form.onRejectAction = row.onRejectAction
   } else {
-    isEdit.value = false
-    editId.value = 0
+    openCreate()
     form.ruleName = ''
     form.systemPrompt = ''
     form.enabledCategories = []
     form.onRejectAction = 'reject'
   }
-  editVisible.value = true
 }
 
 const handleSave = async () => {
@@ -137,20 +116,12 @@ const handleSave = async () => {
     ElMessage.warning('请输入规则名称')
     return
   }
-  const data = {
-    ...form,
-    enabledCategories: form.enabledCategories.join(',')
-  }
-  try {
-    if (isEdit.value) {
-      await updateRule(editId.value, data)
-    } else {
-      await createRule(data)
-    }
-    ElMessage.success(isEdit.value ? '已更新' : '已创建')
-    editVisible.value = false
-    loadList()
-  } catch { /* mock */ }
+  const data = { ...form, enabledCategories: form.enabledCategories.join(',') }
+  const ok = await save(
+    () => isEdit.value ? updateRule(editId.value, data) : createRule(data),
+    { label: '保存' }
+  )
+  if (ok) reload()
 }
 
 const handleDelete = async (row: RuleItem) => {
@@ -158,7 +129,7 @@ const handleDelete = async (row: RuleItem) => {
     await ElMessageBox.confirm('确认删除此规则？', '提示')
     await deleteRule(row.id)
     ElMessage.success('已删除')
-    loadList()
+    reload()
   } catch { /* */ }
 }
 
@@ -171,7 +142,7 @@ const handleTest = async () => {
   }
 }
 
-onMounted(loadList)
+onMounted(reload)
 </script>
 
 <style scoped>

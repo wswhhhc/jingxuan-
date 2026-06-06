@@ -81,6 +81,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAllDicts, createDict, updateDict, deleteDict } from '@/api/admin/dict'
 import type { DictItem } from '@/api/admin/dict'
+import { useCrudDialog } from '@/composables/useCrudDialog'
 
 const loading = ref(false)
 const typeMap = ref<Record<string, DictItem[]>>({})
@@ -89,9 +90,7 @@ const items = ref<DictItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const size = ref(9999)
-const editVisible = ref(false)
-const isEdit = ref(false)
-const editId = ref(0)
+const { editVisible, isEdit, editId, openCreate, openEdit, save } = useCrudDialog()
 const form = reactive({
   dictType: '',
   dictLabel: '',
@@ -151,23 +150,20 @@ const onTypeChange = () => {
 
 const showEdit = (row?: DictItem) => {
   if (row) {
-    isEdit.value = true
-    editId.value = row.id
+    openEdit(row.id)
     form.dictType = row.dictType
     form.dictLabel = row.dictLabel
     form.dictValue = row.dictValue
     form.sort = row.sort ?? 0
     form.remark = row.remark || ''
   } else {
-    isEdit.value = false
-    editId.value = 0
+    openCreate()
     form.dictType = currentType.value
     form.dictLabel = ''
     form.dictValue = ''
     form.sort = 0
     form.remark = ''
   }
-  editVisible.value = true
 }
 
 const handleSave = async () => {
@@ -175,20 +171,11 @@ const handleSave = async () => {
     ElMessage.warning('请填写完整（类型、标签、值为必填）')
     return
   }
-  try {
-    if (isEdit.value) {
-      await updateDict({ id: editId.value, ...form })
-      ElMessage.success('已更新')
-    } else {
-      await createDict({ ...form })
-      ElMessage.success('已创建')
-    }
-    editVisible.value = false
-    loadAll()
-  } catch {
-    editVisible.value = false
-    loadAll()
-  }
+  const ok = await save(
+    () => isEdit.value ? updateDict({ id: editId.value, ...form }) : createDict({ ...form }),
+    { label: '字典' }
+  )
+  if (ok) loadAll()
 }
 
 const handleDelete = async (row: DictItem) => {

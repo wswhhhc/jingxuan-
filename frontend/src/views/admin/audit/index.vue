@@ -108,13 +108,7 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.size"
-          :total="total"
-          layout="total, prev, pager, next"
-          @change="loadList"
-        />
+        <PaginationBar v-model:page="query.page" v-model:size="query.size" :total="total" @change="reload" />
       </div>
     </section>
 
@@ -208,10 +202,9 @@ import request from '@/api/request'
 import { getAuditList, doAudit, getAuditDetail, getAuditHistory, publishWork, offlineWork, setFeatured } from '@/api/admin/audit'
 import type { AuditQuery, AuditHistoryItem } from '@/api/admin/audit'
 import type { WorkListVO, WorkDetailVO } from '@/api/types'
+import { useApiList } from '@/composables/useApiList'
+import PaginationBar from '@/components/PaginationBar.vue'
 
-const loading = ref(false)
-const list = ref<WorkListVO[]>([])
-const total = ref(0)
 const detail = ref<WorkDetailVO | null>(null)
 const detailVisible = ref(false)
 const rejectDialogVisible = ref(false)
@@ -228,6 +221,15 @@ const query = reactive<AuditQuery>({
 
 const classes = ref<{ id: number; dictLabel: string }[]>([])
 const submitTimeRange = ref<[string, string] | null>(null)
+const { loading, list, total, loadList } = useApiList<WorkListVO>(getAuditList)
+const reload = () => {
+  const params: any = { ...query }
+  if (submitTimeRange.value) {
+    params.submitTimeBegin = submitTimeRange.value[0]
+    params.submitTimeEnd = submitTimeRange.value[1]
+  }
+  loadList(params)
+}
 
 const statusType = (s: number) => {
   const map: Record<number, string> = { 1: 'warning', 3: 'success', 2: 'danger', 0: 'info' }
@@ -258,28 +260,9 @@ async function loadClasses() {
   }
 }
 
-const loadList = async () => {
-  loading.value = true
-  try {
-    const params: any = { ...query }
-    if (submitTimeRange.value) {
-      params.submitTimeBegin = submitTimeRange.value[0]
-      params.submitTimeEnd = submitTimeRange.value[1]
-    } else {
-      params.submitTimeBegin = undefined
-      params.submitTimeEnd = undefined
-    }
-    const res = await getAuditList(params)
-    list.value = res.data?.records || []
-    total.value = res.data?.total || 0
-  } finally {
-    loading.value = false
-  }
-}
-
 const handleSearch = () => {
   query.page = 1
-  loadList()
+  reload()
 }
 
 const handleReset = () => {
@@ -289,7 +272,7 @@ const handleReset = () => {
   query.techStack = ''
   query.classId = undefined
   submitTimeRange.value = null
-  loadList()
+  reload()
 }
 
 const showDetail = async (row: WorkListVO) => {
@@ -298,7 +281,8 @@ const showDetail = async (row: WorkListVO) => {
     detail.value = res.data
     const historyRes = await getAuditHistory(row.id)
     auditHistory.value = historyRes.data?.records || []
-  } catch {
+  } catch (e) {
+    console.error('加载审核详情失败:', e)
     detail.value = null
   }
   detailVisible.value = true
@@ -319,9 +303,10 @@ const submitAudit = async (workId: number, result: 'approved' | 'rejected') => {
     ElMessage.success(result === 'approved' ? '审核通过' : '已驳回')
     rejectDialogVisible.value = false
     detailVisible.value = false
-    loadList()
-  } catch {
-    ElMessage.success(result === 'approved' ? '审核通过' : '已驳回')
+    reload()
+  } catch (e) {
+    console.error('审核操作失败:', e)
+    ElMessage.error('审核操作失败，请重试')
   }
 }
 
@@ -330,9 +315,10 @@ const handlePublish = async (workId: number) => {
     await publishWork(workId)
     ElMessage.success('发布成功')
     detailVisible.value = false
-    loadList()
-  } catch {
-    ElMessage.success('发布成功')
+    reload()
+  } catch (e) {
+    console.error('发布失败:', e)
+    ElMessage.error('发布失败，请重试')
   }
 }
 
@@ -341,9 +327,10 @@ const handleOffline = async (workId: number) => {
     await offlineWork(workId)
     ElMessage.success('已下线')
     detailVisible.value = false
-    loadList()
-  } catch {
-    ElMessage.success('已下线')
+    reload()
+  } catch (e) {
+    console.error('下线失败:', e)
+    ElMessage.error('下线失败，请重试')
   }
 }
 
@@ -366,14 +353,15 @@ const handleFeaturedSubmit = async () => {
     featuredDialogVisible.value = false
     const res = await getAuditDetail(detail.value!.id)
     detail.value = res.data
-  } catch {
-    // handled by api layer
+  } catch (e) {
+    console.error('设置精选失败:', e)
+    ElMessage.error('操作失败，请重试')
   }
 }
 
 onMounted(() => {
   loadClasses()
-  loadList()
+  reload()
 })
 </script>
 

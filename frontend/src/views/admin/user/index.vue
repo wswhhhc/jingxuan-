@@ -81,15 +81,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="workspace-pagination">
-        <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.size"
-          :total="total"
-          layout="total, prev, pager, next"
-          @change="loadList"
-        />
-      </div>
+      <PaginationBar v-model:page="query.page" v-model:size="query.size" :total="total" @change="reload" />
     </section>
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑用户' : '新增用户'" width="520px" destroy-on-close>
@@ -250,11 +242,12 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUsers, createUser, updateUser, updateStatus, deleteUser, getRoles, getClasses, batchImportUsers, parseAiImportUsers } from '@/api/admin/user'
 import type { UserItem, RoleItem, ClassItem, AiImportMessage, AiImportUserDraft } from '@/api/admin/user'
+import { useApiList } from '@/composables/useApiList'
+import PaginationBar from '@/components/PaginationBar.vue'
 
-const loading = ref(false)
+const { loading, list, total, loadList } = useApiList<UserItem>(getUsers)
+const reload = () => loadList({ ...query })
 const saving = ref(false)
-const list = ref<UserItem[]>([])
-const total = ref(0)
 const roles = ref<RoleItem[]>([])
 const classes = ref<ClassItem[]>([])
 const dialogVisible = ref(false)
@@ -315,20 +308,9 @@ const pwdRules = {
 
 const isProtectedAdmin = (row: UserItem) => row.username === 'admin' && row.roleName === '管理员'
 
-const loadList = async () => {
-  loading.value = true
-  try {
-    const res = await getUsers({ ...query })
-    list.value = res.data?.records || []
-    total.value = res.data?.total || 0
-  } finally {
-    loading.value = false
-  }
-}
-
 const handleSearch = () => {
   query.page = 1
-  loadList()
+  reload()
 }
 
 const handleReset = () => {
@@ -336,7 +318,7 @@ const handleReset = () => {
   query.keyword = ''
   query.roleId = undefined
   query.status = undefined
-  loadList()
+  reload()
 }
 
 const openCreate = () => {
@@ -380,7 +362,7 @@ const handleSave = async () => {
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
-    loadList()
+    reload()
   } catch {
     // handled by interceptor
   } finally {
@@ -399,7 +381,7 @@ const handleToggleStatus = (row: UserItem) => {
       try {
         await updateStatus(row.id, row.status === 1 ? 0 : 1)
         ElMessage.success(`${action}成功`)
-        loadList()
+        reload()
       } catch {
         // handled by interceptor
       }
@@ -422,7 +404,7 @@ const handleDelete = async (row: UserItem) => {
   try {
     await deleteUser(row.id)
     ElMessage.success('删除成功')
-    loadList()
+    reload()
   } catch {
     // handled by interceptor
   }
@@ -522,7 +504,7 @@ const submitBatchUsers = async (users: Record<string, any>[]) => {
     const res = await batchImportUsers(users)
     batchResult.value = res.data
     ElMessage.success(`导入完成：成功 ${batchResult.value?.success || 0} 条，失败 ${batchResult.value?.failed || 0} 条`)
-    loadList()
+    reload()
   } catch {
     // handled by interceptor
   } finally {
@@ -580,7 +562,7 @@ const loadOptions = async () => {
 }
 
 onMounted(() => {
-  loadList()
+  reload()
   loadOptions()
 })
 </script>

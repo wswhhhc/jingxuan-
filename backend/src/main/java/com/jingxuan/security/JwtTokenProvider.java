@@ -4,12 +4,14 @@ import com.jingxuan.constant.SecurityConstants;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -28,7 +30,16 @@ public class JwtTokenProvider {
     private long rememberExpiration;
 
     public JwtTokenProvider(@Value("${jwt.secret}") String secret) {
+        Objects.requireNonNull(secret, "jwt.secret 未配置，请在 application.yml 中设置 jwt.secret");
+        if (secret.isBlank()) {
+            throw new IllegalArgumentException("jwt.secret 为空，请配置有效的 Base64 密钥");
+        }
         this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+    }
+
+    @PostConstruct
+    public void init() {
+        log.info("JWT 密钥加载完成，token 有效期：{}ms（记住密码：{}ms）", expiration, rememberExpiration);
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.jingxuan.auth.controller;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.jingxuan.common.Result;
 import com.jingxuan.entity.ScoreBatch;
@@ -110,10 +111,16 @@ public class RegistrationController {
         if ("全校可参与".equals(trimmed) || "全校".equals(trimmed) || "all".equalsIgnoreCase(trimmed)) {
             return true;
         }
-        return Arrays.stream(trimmed.replace("[", "").replace("]", "").replace("\"", "").split("[,，]"))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .anyMatch(s -> s.equals(classValue));
+        try {
+            return JSONUtil.parseArray(trimmed).toList(String.class)
+                    .stream().anyMatch(s -> s.equals(classValue));
+        } catch (Exception e) {
+            // 兼容旧数据中的逗号分隔格式
+            return Arrays.stream(trimmed.replace("[", "").replace("]", "").replace("\"", "").split("[,，]"))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .anyMatch(s -> s.equals(classValue));
+        }
     }
 
     private Long parseOptionalLong(Object value) {

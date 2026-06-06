@@ -78,19 +78,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/student/auth'
 import { getUnreadCount } from '@/api/student/notify'
+import { useNotificationPolling } from '@/composables/useNotificationPolling'
 import { ArrowDown, HomeFilled, Plus, Document, Trophy, Bell } from '@element-plus/icons-vue'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const unreadCount = ref(0)
-const hasUnread = computed(() => unreadCount.value > 0)
-let unreadTimer: ReturnType<typeof setInterval> | null = null
+const { unreadCount, hasUnread } = useNotificationPolling({
+  fetchFn: () => getUnreadCount().then(r => r.data as { count: number }),
+  eventName: 'student-notify-changed',
+})
 const avatarFallback = computed(() => authStore.userInfo?.realName?.charAt(0) || '学')
 
 const pageTitle = computed(() => {
@@ -115,15 +117,6 @@ const pageDescription = computed(() => {
   return map[route.path] || '围绕作品组织信息，而不是围绕表单堆砌页面。'
 })
 
-const fetchUnread = async () => {
-  try {
-    const res = await getUnreadCount()
-    unreadCount.value = Number((res.data as any)?.count ?? 0)
-  } catch {
-    unreadCount.value = 0
-  }
-}
-
 const goNotify = () => router.push('/student/notify')
 
 function handleCommand(cmd: string) {
@@ -136,14 +129,6 @@ onMounted(() => {
   if (authStore.token && !authStore.userInfo) {
     authStore.fetchUserInfo().catch(() => undefined)
   }
-  fetchUnread()
-  unreadTimer = setInterval(fetchUnread, 30000)
-  window.addEventListener('student-notify-changed', fetchUnread)
-})
-
-onUnmounted(() => {
-  if (unreadTimer) clearInterval(unreadTimer)
-  window.removeEventListener('student-notify-changed', fetchUnread)
 })
 </script>
 

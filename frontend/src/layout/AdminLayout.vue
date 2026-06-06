@@ -91,6 +91,7 @@ import {
   TrophyBase, Timer, Key, Bell, ArrowDown, User, Document, List, ChatDotRound, Fold, Expand
 } from '@element-plus/icons-vue'
 import request from '../api/request'
+import { useNotificationPolling } from '@/composables/useNotificationPolling'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 import type { UserInfo } from '@/api/types'
 import { clearAuthStorage, getCachedUserInfo } from '@/utils/auth'
@@ -99,9 +100,10 @@ const route = useRoute()
 const router = useRouter()
 const isSidebarCollapsed = ref(false)
 const userInfo = ref<UserInfo | null>(getCachedUserInfo())
-const unreadCount = ref(0)
-let unreadTimer: ReturnType<typeof setInterval> | null = null
-const hasUnread = computed(() => unreadCount.value > 0)
+const { unreadCount, hasUnread } = useNotificationPolling({
+  fetchFn: () => request.get('/admin/notify/unread-count').then(r => r.data as { count: number }),
+  eventName: 'admin-notify-changed',
+})
 const avatarFallback = computed(() => userInfo.value?.realName?.charAt?.(0) || '管')
 const syncUserInfo = () => {
   userInfo.value = getCachedUserInfo()
@@ -135,27 +137,13 @@ const adminMenuItems = [
   { index: '/admin/dict', label: '数据字典', icon: List },
 ]
 
-const fetchUnread = async () => {
-  try {
-    const res = await request.get('/admin/notify/unread-count')
-    unreadCount.value = Number(res.data?.count ?? 0)
-  } catch {
-    unreadCount.value = 0
-  }
-}
-
 onMounted(() => {
   syncUserInfo()
-  fetchUnread()
-  unreadTimer = setInterval(fetchUnread, 30000)
-  window.addEventListener('admin-notify-changed', fetchUnread)
   window.addEventListener('focus', syncUserInfo)
   window.addEventListener('storage', syncUserInfo)
 })
 
 onUnmounted(() => {
-  if (unreadTimer) clearInterval(unreadTimer)
-  window.removeEventListener('admin-notify-changed', fetchUnread)
   window.removeEventListener('focus', syncUserInfo)
   window.removeEventListener('storage', syncUserInfo)
 })

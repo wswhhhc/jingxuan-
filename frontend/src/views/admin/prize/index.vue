@@ -9,7 +9,7 @@
               <p class="workspace-toolbar__desc">按批次整理奖项、奖品与名额配置。</p>
             </div>
             <div class="workspace-toolbar__actions">
-              <el-select v-model="batchFilter" clearable placeholder="筛选批次" @change="loadList">
+              <el-select v-model="batchFilter" clearable placeholder="筛选批次" @change="reload">
               <el-option v-for="b in batches" :key="b.id" :label="b.batchName" :value="b.id" />
               </el-select>
               <el-button type="primary" @click="showEdit()">新增奖项</el-button>
@@ -35,13 +35,7 @@
           </el-table>
 
           <div class="workspace-pagination">
-            <el-pagination
-              v-model:current-page="page"
-              v-model:page-size="size"
-              :total="total"
-              layout="total, prev, pager, next"
-              @change="loadList"
-            />
+            <PaginationBar v-model:page="page" v-model:size="size" :total="total" @change="reload" />
           </div>
         </section>
       </el-tab-pane>
@@ -86,13 +80,7 @@
           </el-table>
 
           <div class="workspace-pagination">
-            <el-pagination
-              v-model:current-page="issuePage"
-              v-model:page-size="issueSize"
-              :total="issueTotal"
-              layout="total, prev, pager, next"
-              @change="loadIssueList"
-            />
+            <PaginationBar v-model:page="issuePage" v-model:size="issueSize" :total="issueTotal" @change="reloadIssue" />
           </div>
         </section>
       </el-tab-pane>
@@ -151,20 +139,23 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useAuthStore } from '@/stores/student/auth'
 import { getPrizeList, createPrize, updatePrize, deletePrize, getPrizeBatches, getIssueList, issuePrize, cancelIssue } from '@/api/admin/prize'
 import type { PrizeItem, IssueItem } from '@/api/admin/prize'
+import { useApiList } from '@/composables/useApiList'
+import { useCrudDialog } from '@/composables/useCrudDialog'
+import PaginationBar from '@/components/PaginationBar.vue'
+
+const authStore = useAuthStore()
 
 const activeTab = ref('config')
-const loading = ref(false)
-const list = ref<PrizeItem[]>([])
 const batches = ref<{ id: number; batchName: string }[]>([])
-const total = ref(0)
+const batchFilter = ref('')
 const page = ref(1)
 const size = ref(20)
-const batchFilter = ref('')
-const editVisible = ref(false)
-const isEdit = ref(false)
-const editId = ref(0)
+const { loading, list, total, loadList } = useApiList<PrizeItem>(getPrizeList)
+const reload = () => loadList({ page: page.value, size: size.value, ...(batchFilter.value ? { batchId: batchFilter.value } : {}) })
+const { editVisible, isEdit, editId, openCreate, openEdit, save } = useCrudDialog()
 const form = reactive({
   batchId: 0,
   rewardLevel: '',
@@ -196,41 +187,27 @@ const loadBatches = async () => {
   try {
     const res = await getPrizeBatches()
     batches.value = res.data || []
-  } catch { /* mock */ }
-}
-
-const loadList = async () => {
-  loading.value = true
-  try {
-    const params: any = { page: page.value, size: size.value }
-    if (batchFilter.value) params.batchId = batchFilter.value
-    const res = await getPrizeList(params)
-    list.value = res.data?.records || res.data || []
-    total.value = res.data?.total || 0
-  } finally {
-    loading.value = false
+  } catch (e) {
+    console.error('加载批次列表失败:', e)
   }
 }
 
 const showEdit = (row?: PrizeItem) => {
   if (row) {
-    isEdit.value = true
-    editId.value = row.id
+    openEdit(row.id)
     form.batchId = row.batchId
     form.rewardLevel = row.rewardLevel
     form.rewardName = row.rewardName
     form.prizeName = row.prizeName
     form.quota = row.quota
   } else {
-    isEdit.value = false
-    editId.value = 0
+    openCreate()
     form.batchId = 0
     form.rewardLevel = ''
     form.rewardName = ''
     form.prizeName = ''
     form.quota = 1
   }
-  editVisible.value = true
 }
 
 const handleSave = async () => {
@@ -238,25 +215,27 @@ const handleSave = async () => {
     ElMessage.warning('请填写完整')
     return
   }
-  try {
-    if (isEdit.value) {
-      await updatePrize(editId.value, form)
-    } else {
-      await createPrize(form)
-    }
-    ElMessage.success(isEdit.value ? '已更新' : '已创建')
-    editVisible.value = false
-    loadList()
-  } catch { /* mock */ }
+  const ok = await save(
+    () => isEdit.value ? updatePrize(editId.value, form) : createPrize(form),
+    { label: '奖项' }
+  )
+  if (ok) reload()
 }
 
 const handleDelete = async (row: PrizeItem) => {
   try {
     await ElMessageBox.confirm('确认删除此奖项配置？', '提示')
+  } catch {
+    return // 用户取消
+  }
+  try {
     await deletePrize(row.id)
     ElMessage.success('已删除')
-    loadList()
-  } catch { /* */ }
+    reload()
+  } catch (e) {
+    console.error('删除奖项失败:', e)
+    ElMessage.error('删除失败，请重试')
+  }
 }
 
 const loadIssueList = async () => {
@@ -287,11 +266,14 @@ const handleIssueSubmit = async () => {
   }
   issueSaving.value = true
   try {
-    await issuePrize({ rewardId: issueForm.rewardId, workId: issueForm.workId, operatorId: 1 })
+    await issuePrize({ rewardId: issueForm.rewardId, workId: issueForm.workId, operatorId: authStore.userInfo?.id || 0 })
     ElMessage.success('已发放')
     issueVisible.value = false
     loadIssueList()
-  } catch { /* */ } finally {
+  } catch (e) {
+    console.error('发放奖品失败:', e)
+    ElMessage.error('发放失败，请重试')
+  } finally {
     issueSaving.value = false
   }
 }
@@ -299,17 +281,24 @@ const handleIssueSubmit = async () => {
 const handleCancelIssue = async (row: IssueItem) => {
   try {
     await ElMessageBox.confirm('确认取消该发放记录？', '提示')
+  } catch {
+    return // 用户取消
+  }
+  try {
     await cancelIssue(row.id)
     ElMessage.success('已取消')
     loadIssueList()
-  } catch { /* */ }
+  } catch (e) {
+    console.error('取消发放失败:', e)
+    ElMessage.error('操作失败，请重试')
+  }
 }
 
 const onTabChange = (tab: string) => {
   if (tab === 'issue') loadIssueList()
 }
 
-onMounted(() => { loadBatches(); loadList() })
+onMounted(() => { loadBatches(); reload() })
 </script>
 
 <style scoped>

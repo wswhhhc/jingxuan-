@@ -443,16 +443,23 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     }
 
     /**
-     * 追加“提交者或已注册成员”的参与范围
+     * 追加”提交者或已注册成员”的参与范围
      */
     private void appendParticipantScope(LambdaQueryWrapper<Work> wrapper, Long userId) {
         if (userId == null) {
             return;
         }
-        wrapper.and(w -> w.eq(Work::getSubmitterId, userId)
-                .or()
-                .inSql(Work::getId,
-                        "SELECT DISTINCT work_id FROM work_member WHERE deleted = 0 AND student_id = " + userId));
+        // 安全查询：先查 work_member 获取关联作品 ID，再传入 in() （避免 inSql 字符串拼接）
+        List<Object> memberWorkIds = workMemberMapper.selectObjs(
+                Wrappers.<WorkMember>lambdaQuery()
+                        .select(WorkMember::getWorkId)
+                        .eq(WorkMember::getStudentId, userId));
+        wrapper.and(w -> {
+            w.eq(Work::getSubmitterId, userId);
+            if (!memberWorkIds.isEmpty()) {
+                w.or().in(Work::getId, memberWorkIds);
+            }
+        });
     }
 
     /**

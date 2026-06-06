@@ -73,7 +73,9 @@ const handleRead = async (item: NotifyItem) => {
       await markAsRead(item.id)
       item.isRead = 1
       emitNotifyChanged()
-    } catch { /* optimistic update */ }
+    } catch (e) {
+      console.error('标记已读失败:', e)
+    }
   }
 }
 
@@ -83,7 +85,10 @@ const handleMarkAll = async () => {
     list.value.forEach(i => { i.isRead = 1 })
     emitNotifyChanged()
     ElMessage.success('全部已读')
-  } catch { /* mock */ }
+  } catch (e) {
+    console.error('全部已读操作失败:', e)
+    ElMessage.error('操作失败，请重试')
+  }
 }
 
 onMounted(loadList)

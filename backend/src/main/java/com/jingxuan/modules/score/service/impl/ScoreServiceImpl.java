@@ -1,6 +1,7 @@
 package com.jingxuan.modules.score.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.entity.ScoreBatch;
@@ -34,6 +35,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -90,14 +92,16 @@ public class ScoreServiceImpl extends ServiceImpl<WorkScoreMapper, WorkScore> im
                 if (StrUtil.isNotBlank(batch.getClassScopes())) {
                     SysUser submitter = sysUserMapper.selectById(work.getSubmitterId());
                     if (submitter != null && submitter.getClassId() != null) {
-                        Set<String> scopes = Arrays.stream(batch.getClassScopes()
-                                        .replace("[", "")
-                                        .replace("]", "")
-                                        .replace("\"", "")
-                                        .split(","))
-                                .map(String::trim)
-                                .filter(StrUtil::isNotBlank)
-                                .collect(Collectors.toSet());
+                        Set<String> scopes;
+                        try {
+                            scopes = new HashSet<>(JSONUtil.parseArray(batch.getClassScopes()).toList(String.class));
+                        } catch (Exception e) {
+                            // 兼容旧数据中的逗号分隔格式
+                            scopes = Arrays.stream(batch.getClassScopes().replace("[", "").replace("]", "").replace("\"", "").split(","))
+                                    .map(String::trim)
+                                    .filter(StrUtil::isNotBlank)
+                                    .collect(Collectors.toSet());
+                        }
                         String classId = String.valueOf(submitter.getClassId());
                         SysDict classDict = sysDictMapper.selectById(submitter.getClassId());
                         String classValue = classDict != null ? classDict.getDictValue() : null;
@@ -125,29 +129,23 @@ public class ScoreServiceImpl extends ServiceImpl<WorkScoreMapper, WorkScore> im
                 .add(request.getCompletion())
                 .add(request.getPracticality());
 
-        // 4. Upsert：同一教师对同一作品已评分则更新，否则新增
-        WorkScore existing = workScoreMapper.selectByWorkAndTeacher(request.getWorkId(), teacherId);
-        if (existing != null) {
-            existing.setInnovation(request.getInnovation());
-            existing.setDifficulty(request.getDifficulty());
-            existing.setCompletion(request.getCompletion());
-            existing.setPracticality(request.getPracticality());
-            existing.setTotal(total);
-            existing.setComment(request.getComment());
-            workScoreMapper.updateById(existing);
-        } else {
-            WorkScore score = new WorkScore();
-            score.setWorkId(request.getWorkId());
-            score.setTeacherId(teacherId);
-            score.setBatchId(work.getBatchId());
-            score.setInnovation(request.getInnovation());
-            score.setDifficulty(request.getDifficulty());
-            score.setCompletion(request.getCompletion());
-            score.setPracticality(request.getPracticality());
-            score.setTotal(total);
-            score.setComment(request.getComment());
-            workScoreMapper.insert(score);
-        }
+        // 4. 原子化 Upsert：利用 MySQL ON DUPLICATE KEY UPDATE 避免并发竞态
+        WorkScore score = new WorkScore();
+        score.setWorkId(request.getWorkId());
+        score.setTeacherId(teacherId);
+        score.setBatchId(work.getBatchId());
+        score.setInnovation(request.getInnovation());
+        score.setDifficulty(request.getDifficulty());
+        score.setCompletion(request.getCompletion());
+        score.setPracticality(request.getPracticality());
+        score.setTotal(total);
+        score.setComment(request.getComment());
+        workScoreMapper.upsert(
+                score.getId(), score.getWorkId(), score.getTeacherId(),
+                score.getBatchId(), score.getInnovation(), score.getDifficulty(),
+                score.getCompletion(), score.getPracticality(), score.getTotal(),
+                score.getComment()
+        );
 
         logService.recordAction("提交评分", "作品", request.getWorkId());
 

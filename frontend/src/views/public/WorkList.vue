@@ -144,15 +144,7 @@
         </article>
       </div>
 
-      <div v-if="total > 0" class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="pageSize"
-          :total="total"
-          layout="prev, pager, next, total"
-          @current-change="loadList"
-        />
-      </div>
+      <PaginationBar v-model:page="page" v-model:size="pageSize" :total="total" @change="reload" />
     </section>
   </div>
 </template>
@@ -163,16 +155,28 @@ import { useRouter } from 'vue-router'
 import { Search, Picture, View, Star } from '@element-plus/icons-vue'
 import { getPublicWorkList, getPublicClassList, getPublicTagList, type PublicWorkListParams, type PublicClassItem, type TagItem } from '@/api/public/work'
 import type { WorkItem } from '@/api/student/work'
+import { useApiList } from '@/composables/useApiList'
+import PaginationBar from '@/components/PaginationBar.vue'
 
 const router = useRouter()
-const list = ref<WorkItem[]>([])
-const loading = ref(false)
-const total = ref(0)
 const page = ref(1)
 const pageSize = ref(12)
 const classes = ref<PublicClassItem[]>([])
 const tags = ref<TagItem[]>([])
 const submitTimeRange = ref<[string, string] | null>(null)
+const { loading, list, total, loadList } = useApiList<WorkItem>(getPublicWorkList, data => ({
+  records: (data as any)?.records || [],
+  total: (data as any)?.total || 0
+}))
+const reload = () => loadList({
+  page: page.value,
+  pageSize: pageSize.value,
+  keyword: query.keyword || undefined,
+  techStack: query.techStack || undefined,
+  classId: query.classId || undefined,
+  submitTimeBegin: query.submitTimeBegin || undefined,
+  submitTimeEnd: query.submitTimeEnd || undefined,
+})
 
 const query = reactive<PublicWorkListParams>({
   keyword: '',
@@ -183,7 +187,7 @@ const featuredCount = computed(() => list.value.filter((item: any) => !!item.fea
 
 function search() {
   page.value = 1
-  loadList()
+  reload()
 }
 
 function resetSearch() {
@@ -207,29 +211,6 @@ function onDateRangeChange(val: [string, string] | null) {
   search()
 }
 
-async function loadList() {
-  loading.value = true
-  try {
-    const res = await getPublicWorkList({
-      page: page.value,
-      pageSize: pageSize.value,
-      keyword: query.keyword || undefined,
-      techStack: query.techStack || undefined,
-      classId: query.classId || undefined,
-      submitTimeBegin: query.submitTimeBegin || undefined,
-      submitTimeEnd: query.submitTimeEnd || undefined,
-    })
-    const data = res.data
-    list.value = data.records || []
-    total.value = data.total || 0
-  } catch {
-    list.value = []
-    total.value = 0
-  } finally {
-    loading.value = false
-  }
-}
-
 async function loadClasses() {
   try {
     const res = await getPublicClassList()
@@ -251,7 +232,7 @@ async function loadTags() {
 onMounted(() => {
   loadClasses()
   loadTags()
-  loadList()
+  reload()
 })
 </script>
 

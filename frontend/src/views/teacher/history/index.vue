@@ -49,16 +49,7 @@
         <el-empty description="暂无评分记录" :image-size="72" />
       </div>
 
-      <div class="workspace-pagination">
-        <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.size"
-          :total="total"
-          layout="total, prev, pager, next"
-          small
-          @change="loadList"
-        />
-      </div>
+      <PaginationBar v-model:page="query.page" v-model:size="query.size" :total="total" small @change="reload" />
     </section>
   </div>
 </template>
@@ -68,28 +59,15 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getScoreHistory, type ScoreRecord } from '@/api/teacher/score'
+import { useApiList } from '@/composables/useApiList'
+import PaginationBar from '@/components/PaginationBar.vue'
 
 const router = useRouter()
-const loading = ref(false)
 const exporting = ref(false)
-const list = ref<ScoreRecord[]>([])
-const total = ref(0)
 
-const query = reactive({
-  page: 1,
-  size: 10
-})
-
-const loadList = async () => {
-  loading.value = true
-  try {
-    const res = await getScoreHistory({ page: query.page, size: query.size })
-    list.value = res.data?.records || []
-    total.value = res.data?.total || 0
-  } finally {
-    loading.value = false
-  }
-}
+const query = reactive({ page: 1, size: 10 })
+const { loading, list, total, loadList } = useApiList<ScoreRecord>(getScoreHistory)
+const reload = () => loadList({ page: query.page, size: query.size })
 
 const goScore = (row: ScoreRecord) => {
   router.push({
@@ -157,7 +135,7 @@ const handleExport = async () => {
   }
 }
 
-onMounted(loadList)
+onMounted(reload)
 </script>
 
 <style scoped>
@@ -171,4 +149,5 @@ onMounted(loadList)
   font-weight: 600;
   color: var(--brand);
 }
+
 </style>

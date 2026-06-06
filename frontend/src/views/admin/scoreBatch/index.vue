@@ -44,13 +44,7 @@
       </el-table>
 
       <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="pageNum"
-          v-model:page-size="pageSize"
-          :total="total"
-          layout="total, prev, pager, next"
-          @change="loadList"
-        />
+        <PaginationBar v-model:page="pageNum" v-model:size="pageSize" :total="total" @change="reload" />
       </div>
     </el-card>
 
@@ -279,12 +273,15 @@ import { getBatchList, createBatch, updateBatch, getBatchScoreDetail, deleteBatc
 import { createPrize } from '@/api/admin/prize'
 import type { ScoreBatchItem, BatchScoreDetail } from '@/api/admin/scoreBatch'
 import request from '@/api/request'
+import { useApiList } from '@/composables/useApiList'
+import PaginationBar from '@/components/PaginationBar.vue'
 
-const loading = ref(false)
-const list = ref<ScoreBatchItem[]>([])
-const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(20)
+const { loading, list, total, loadList } = useApiList<ScoreBatchItem>(
+  params => getBatchList(params.page ?? pageNum.value, params.size ?? pageSize.value)
+)
+const reload = () => loadList({ page: pageNum.value, size: pageSize.value })
 
 // ===== 向导 =====
 const wizardVisible = ref(false)
@@ -378,15 +375,6 @@ const loadClasses = async () => {
     const res = await request.get('/admin/dict/classes')
     classes.value = res.data || []
   } catch { classes.value = [] }
-}
-
-const loadList = async () => {
-  loading.value = true
-  try {
-    const res = await getBatchList(pageNum.value, pageSize.value)
-    list.value = res.data?.records || []
-    total.value = res.data?.total || 0
-  } finally { loading.value = false }
 }
 
 // ===== 向导步骤 =====
@@ -483,7 +471,7 @@ async function handleWizardSubmit() {
     }
 
     wizardVisible.value = false
-    loadList()
+    reload()
   } catch { /* handled by interceptor */ }
   finally { submitting.value = false }
 }
@@ -504,7 +492,7 @@ async function saveNoticeOnly() {
     })
     ElMessage.success('通知已保存')
     noticeVisible.value = false
-    loadList()
+    reload()
   } catch { /* handled */ }
 }
 
@@ -517,7 +505,7 @@ async function saveAndPublishNotice() {
     await request.post(`/score-batch/${noticeBatchId.value}/publish-notice`)
     ElMessage.success('通知已保存并发布')
     noticeVisible.value = false
-    loadList()
+    reload()
   } catch { /* handled */ }
 }
 
@@ -532,7 +520,7 @@ const handleDelete = async (row: ScoreBatchItem) => {
     await ElMessageBox.confirm(`确认删除批次「${row.batchName}」？`, '提示')
     await deleteBatch(row.id)
     ElMessage.success('删除成功')
-    loadList()
+    reload()
   } catch { /* cancelled or failed */ }
 }
 
@@ -553,7 +541,7 @@ const publishRanking = async (batchId: number) => {
     await request.post(`/score-batch/${batchId}/publish-ranking`)
     ElMessage.success('排行榜已公示')
     rankingPublished.value = true
-    loadList()
+    reload()
   } catch { /* handled */ }
 }
 
@@ -562,11 +550,11 @@ const unpublishRanking = async (batchId: number) => {
     await request.post(`/score-batch/${batchId}/unpublish-ranking`)
     ElMessage.success('已取消公示')
     rankingPublished.value = false
-    loadList()
+    reload()
   } catch { /* handled */ }
 }
 
-onMounted(() => { loadList(); loadClasses() })
+onMounted(() => { reload(); loadClasses() })
 </script>
 
 <style scoped>

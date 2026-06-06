@@ -1,5 +1,6 @@
 package com.jingxuan.modules.scorebatch.service.impl;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -247,12 +249,15 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
                     .map(SysDict::getId)
                     .collect(Collectors.toSet());
         }
-        // 按班级 dict_value 匹配：查询 sys_dict 获取对应的 id
-        String[] scopeItems = trimmed.replace("[", "").replace("]", "").replace("\"", "").split("[,，]");
-        Set<String> scopeValues = Arrays.stream(scopeItems)
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toSet());
+        // 按班级 dict_value 匹配：查询 sys_dict 获取对应的 id（JSON 数组格式如 ["1","2","3"]）
+        Set<String> scopeValues;
+        try {
+            scopeValues = new HashSet<>(JSONUtil.parseArray(trimmed).toList(String.class));
+        } catch (Exception e) {
+            // 兼容旧数据中的逗号分隔格式
+            String[] fallback = trimmed.replace("[", "").replace("]", "").replace("\"", "").split("[,，]");
+            scopeValues = Arrays.stream(fallback).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toSet());
+        }
         if (scopeValues.isEmpty()) {
             return Set.of();
         }

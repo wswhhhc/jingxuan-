@@ -1,14 +1,21 @@
 package com.jingxuan.security;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class InMemoryTokenBlacklistService implements TokenBlacklistService {
 
-    private final Map<String, Long> blacklist = new ConcurrentHashMap<>();
+    /**
+     * 最大缓存 10000 条，写入后 24 小时自动过期（即使 token 未再被查询）
+     */
+    private final Cache<String, Long> blacklist = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterWrite(24, TimeUnit.HOURS)
+            .build();
 
     @Override
     public void blacklist(String token, long ttlMillis) {
@@ -23,12 +30,13 @@ public class InMemoryTokenBlacklistService implements TokenBlacklistService {
         if (token == null || token.isBlank()) {
             return false;
         }
-        Long expireAt = blacklist.get(token);
+        Long expireAt = blacklist.getIfPresent(token);
         if (expireAt == null) {
             return false;
         }
+        // 即使 Caffeine 缓存条目还在，也要检查实际过期时间
         if (expireAt < System.currentTimeMillis()) {
-            blacklist.remove(token);
+            blacklist.invalidate(token);
             return false;
         }
         return true;

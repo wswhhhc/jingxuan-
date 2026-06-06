@@ -2,6 +2,7 @@ package com.jingxuan.modules.adapter;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.json.JSONUtil;
 import com.jingxuan.common.PageResult;
 import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.SysDict;
@@ -212,14 +213,16 @@ public class TeacherWorkFacade {
             return true;
         }
 
-        Set<String> scopes = Arrays.stream(batch.getClassScopes()
-                        .replace("[", "")
-                        .replace("]", "")
-                        .replace("\"", "")
-                        .split(","))
-                .map(String::trim)
-                .filter(item -> !item.isEmpty())
-                .collect(Collectors.toSet());
+        Set<String> scopes;
+        try {
+            scopes = new HashSet<>(JSONUtil.parseArray(batch.getClassScopes()).toList(String.class));
+        } catch (Exception e) {
+            // 兼容旧数据中的逗号分隔格式
+            scopes = Arrays.stream(batch.getClassScopes().replace("[", "").replace("]", "").replace("\"", "").split(","))
+                    .map(String::trim)
+                    .filter(item -> !item.isEmpty())
+                    .collect(Collectors.toSet());
+        }
         String classId = String.valueOf(submitter.getClassId());
         SysDict classDict = sysDictMapper.selectById(submitter.getClassId());
         String classValue = classDict != null ? classDict.getDictValue() : null;

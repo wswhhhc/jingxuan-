@@ -116,7 +116,7 @@
             v-model:page-size="pageSize"
             :total="total"
             layout="prev, pager, next, total"
-            @current-change="loadWorks"
+            @current-change="reload"
           />
         </div>
       </div>
@@ -136,15 +136,18 @@ import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getMyWorks, deleteWork, type WorkItem } from '@/api/student/work'
 import { useAuthStore } from '@/stores/student/auth'
+import { useApiList } from '@/composables/useApiList'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const list = ref<WorkItem[]>([])
-const loading = ref(false)
-const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
 const filterStatus = ref('')
+const { loading, list, total, loadList } = useApiList<WorkItem>(getMyWorks, data => ({
+  records: (data as any)?.records || [],
+  total: (data as any)?.total || 0
+}))
+const reload = () => loadList({ page: page.value, pageSize: pageSize.value, status: filterStatus.value || undefined })
 
 const drawerVisible = ref(false)
 const rejectReason = ref('')
@@ -164,40 +167,22 @@ function canManage(item: WorkItem) {
   return item.submitterId === authStore.userInfo?.id
 }
 
-async function loadWorks() {
-  loading.value = true
-  try {
-    const res = await getMyWorks({
-      page: page.value,
-      pageSize: pageSize.value,
-      status: filterStatus.value || undefined,
-    })
-    const data = res.data
-    list.value = data.records || []
-    total.value = data.total || 0
-  } catch {
-    list.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
 function handleFilterChange() {
   page.value = 1
-  loadWorks()
+  reload()
 }
 
 async function handleDelete(id: string | number) {
   try {
     await deleteWork(id)
     ElMessage.success('删除成功')
-    loadWorks()
+    reload()
   } catch {
     // 错误已在拦截器中处理
   }
 }
 
-onMounted(loadWorks)
+onMounted(reload)
 </script>
 
 <style scoped>

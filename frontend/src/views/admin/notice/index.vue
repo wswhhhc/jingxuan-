@@ -7,7 +7,7 @@
           <p class="workspace-toolbar__desc">以统一编辑界面维护公告，并快速进入新增与预览流程。</p>
         </div>
         <div class="workspace-toolbar__actions">
-          <el-input v-model="keyword" placeholder="搜索公告" clearable @clear="loadList" @keyup.enter="loadList" />
+          <el-input v-model="keyword" placeholder="搜索公告" clearable @clear="handleSearch" @keyup.enter="handleSearch" />
           <el-button type="primary" @click="showEdit()">发布公告</el-button>
         </div>
       </div>
@@ -45,15 +45,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="workspace-pagination">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="size"
-          :total="total"
-          layout="total, prev, pager, next"
-          @change="loadList"
-        />
-      </div>
+      <PaginationBar v-model:page="page" v-model:size="size" :total="total" @change="reload" />
     </section>
 
     <el-dialog v-model="editVisible" :title="isEdit ? '编辑公告' : '发布公告'" width="650px">
@@ -87,34 +79,24 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getNoticeList, createNotice, updateNotice, deleteNotice } from '@/api/admin/notice'
 import type { NoticeItem } from '@/api/admin/notice'
+import { useApiList } from '@/composables/useApiList'
+import { useCrudDialog } from '@/composables/useCrudDialog'
+import PaginationBar from '@/components/PaginationBar.vue'
 
-const loading = ref(false)
-const list = ref<NoticeItem[]>([])
-const total = ref(0)
 const page = ref(1)
 const size = ref(20)
 const keyword = ref('')
-const editVisible = ref(false)
+const { loading, list, total, loadList } = useApiList<NoticeItem>(
+  params => getNoticeList(params)
+)
+const reload = () => loadList({ page: page.value, size: size.value, status: undefined })
+const handleSearch = () => { page.value = 1; reload() }
+const { editVisible, isEdit, editId, openCreate, openEdit, save } = useCrudDialog()
 const detailVisible = ref(false)
-const isEdit = ref(false)
 const detailData = ref<NoticeItem | null>(null)
 const form = reactive({ title: '', content: '' })
-const editId = ref(0)
 
-const loadList = async () => {
-  loading.value = true
-  try {
-    const res = await getNoticeList({
-      page: page.value,
-      size: size.value,
-      status: undefined
-    })
-    list.value = res.data?.records || res.data || []
-    total.value = res.data?.total || 0
-  } finally {
-    loading.value = false
-  }
-}
+
 
 const showDetail = (row: NoticeItem) => {
   detailData.value = row
@@ -123,17 +105,14 @@ const showDetail = (row: NoticeItem) => {
 
 const showEdit = (row?: NoticeItem) => {
   if (row) {
-    isEdit.value = true
-    editId.value = row.id
+    openEdit(row.id)
     form.title = row.title
     form.content = row.content
   } else {
-    isEdit.value = false
-    editId.value = 0
+    openCreate()
     form.title = ''
     form.content = ''
   }
-  editVisible.value = true
 }
 
 const handleSave = async () => {
@@ -141,20 +120,13 @@ const handleSave = async () => {
     ElMessage.warning('请填写完整')
     return
   }
-  try {
-    if (isEdit.value) {
-      await updateNotice(editId.value, { title: form.title, content: form.content })
-    } else {
-      await createNotice({ title: form.title, content: form.content, status: 1 })
-    }
-    ElMessage.success(isEdit.value ? '已更新' : '已发布')
-    editVisible.value = false
-    loadList()
-  } catch {
-    ElMessage.success(isEdit.value ? '已更新' : '已发布')
-    editVisible.value = false
-    loadList()
-  }
+  const ok = await save(
+    () => isEdit.value
+      ? updateNotice(editId.value, { title: form.title, content: form.content })
+      : createNotice({ title: form.title, content: form.content, status: 1 }),
+    { label: '公告' }
+  )
+  if (ok) reload()
 }
 
 const handleDelete = async (row: NoticeItem) => {
@@ -162,11 +134,11 @@ const handleDelete = async (row: NoticeItem) => {
     await ElMessageBox.confirm('确认删除此公告？', '提示')
     await deleteNotice(row.id)
     ElMessage.success('已删除')
-    loadList()
+    reload()
   } catch { /* 取消或错误 */ }
 }
 
-onMounted(loadList)
+onMounted(reload)
 </script>
 
 <style scoped>
@@ -206,19 +178,6 @@ onMounted(loadList)
   background: color-mix(in srgb, var(--brand-soft) 44%, var(--card-bg)) !important;
 }
 
-:global([data-theme="dark"]) .notice-page :deep(.el-table) {
-  --el-table-tr-bg-color: color-mix(in srgb, var(--card-bg) 96%, #16202b);
-  --el-fill-color-lighter: color-mix(in srgb, var(--card-bg) 93%, #1a2531);
-}
-
-:global([data-theme="dark"]) .notice-page :deep(.el-table__row--striped td.el-table__cell) {
-  background: color-mix(in srgb, var(--card-bg) 86%, rgba(255, 255, 255, 0.03));
-}
-
-:global([data-theme="dark"]) .notice-page :deep(.el-table td.el-table__cell),
-:global([data-theme="dark"]) .notice-page :deep(.el-table th.el-table__cell) {
-  border-bottom-color: color-mix(in srgb, var(--border-subtle) 92%, transparent);
-}
 
 .text-muted { color: var(--text-muted); font-size: 13px; }
 .notice-content { white-space: pre-wrap; line-height: 1.8; }

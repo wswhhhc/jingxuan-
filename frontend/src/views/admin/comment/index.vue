@@ -89,15 +89,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="workspace-pagination">
-        <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.size"
-          :total="total"
-          layout="total, prev, pager, next"
-          @change="loadList"
-        />
-      </div>
+      <PaginationBar v-model:page="query.page" v-model:size="query.size" :total="total" @change="reload" />
     </section>
   </div>
 </template>
@@ -107,10 +99,9 @@ import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAdminCommentList, deleteAdminComment, getAdminCommentWorkOptions } from '@/api/admin/comment'
 import type { AdminCommentItem, CommentWorkOption } from '@/api/admin/comment'
+import { useApiList } from '@/composables/useApiList'
+import PaginationBar from '@/components/PaginationBar.vue'
 
-const loading = ref(false)
-const list = ref<AdminCommentItem[]>([])
-const total = ref(0)
 const workOptions = ref<CommentWorkOption[]>([])
 
 const query = reactive({
@@ -120,21 +111,12 @@ const query = reactive({
   userKeyword: '',
   contentKeyword: ''
 })
-
-const loadList = async () => {
-  loading.value = true
-  try {
-    const res = await getAdminCommentList({ ...query })
-    list.value = res.data?.records || []
-    total.value = res.data?.total || 0
-  } finally {
-    loading.value = false
-  }
-}
+const { loading, list, total, loadList } = useApiList<AdminCommentItem>(params => getAdminCommentList(params))
+const reload = () => loadList({ ...query })
 
 const handleSearch = () => {
   query.page = 1
-  loadList()
+  reload()
 }
 
 const loadWorkOptions = async () => {
@@ -151,7 +133,7 @@ const handleReset = () => {
   query.workId = undefined
   query.userKeyword = ''
   query.contentKeyword = ''
-  loadList()
+  reload()
 }
 
 const getRowIndex = (index: number) => (query.page - 1) * query.size + index + 1
@@ -177,7 +159,7 @@ const handleDelete = async (row: AdminCommentItem) => {
 
 onMounted(() => {
   loadWorkOptions()
-  loadList()
+  reload()
 })
 </script>
 

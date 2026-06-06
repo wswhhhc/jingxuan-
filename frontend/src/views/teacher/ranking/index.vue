@@ -15,12 +15,12 @@
           </el-select>
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="query.type" placeholder="全部" clearable @change="loadList">
+          <el-select v-model="query.type" placeholder="全部" clearable @change="reload">
             <el-option v-for="c in categories" :key="c.value" :label="c.label" :value="c.value" />
           </el-select>
         </el-form-item>
         <el-form-item class="workspace-filter-actions">
-          <el-button type="primary" @click="loadList">查询</el-button>
+          <el-button type="primary" @click="reload">查询</el-button>
           <el-button @click="handleRefresh">刷新排行</el-button>
         </el-form-item>
       </el-form>
@@ -81,9 +81,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getRanking, getRankingBatches, getRankingCategories, refreshRanking } from '@/api/teacher/ranking'
 import type { RankingItem, CategoryItem } from '@/api/teacher/ranking'
+import { useApiList } from '@/composables/useApiList'
 
-const loading = ref(false)
-const list = ref<RankingItem[]>([])
 const batches = ref<{ id: number; batchName: string }[]>([])
 const categories = ref<CategoryItem[]>([])
 
@@ -91,6 +90,11 @@ const query = reactive({
   batchId: undefined as number | undefined,
   type: undefined as string | undefined
 })
+const { loading, list, loadList } = useApiList<RankingItem>(getRanking, data => ({
+  records: (data as RankingItem[]) || [],
+  total: (data as RankingItem[])?.length || 0
+}))
+const reload = () => loadList({ ...query, topN: 50 })
 
 const rewardType = (l: string) => {
   const map: Record<string, string> = { '一等奖': 'danger', '二等奖': 'warning', '三等奖': '', '优秀奖': 'info' }
@@ -101,35 +105,25 @@ const loadBatches = async () => {
   try {
     const res = await getRankingBatches()
     batches.value = res.data || []
-  } catch { /* 后端未就绪 */ }
+  } catch (e) {
+    console.error('加载排名数据失败:', e)
+  }
 }
 
 const loadCategories = async () => {
   try {
     const res = await getRankingCategories(query.batchId)
     categories.value = res.data || []
-  } catch { /* 后端未就绪 */ }
+  } catch (e) {
+    console.error('加载排名数据失败:', e)
+  }
 }
 
 // 批次切换时重新加载分类
 const onBatchChange = (val: number | undefined) => {
   query.batchId = val
   loadCategories()
-  loadList()
-}
-
-const loadList = async () => {
-  loading.value = true
-  try {
-    const res = await getRanking({
-      ...query,
-      topN: 50  // 取前 50 条，前端不分页
-    })
-    // 后端返回 flat list，直接赋值
-    list.value = (res.data as RankingItem[]) || []
-  } finally {
-    loading.value = false
-  }
+  reload()
 }
 
 const handleRefresh = async () => {
@@ -140,9 +134,10 @@ const handleRefresh = async () => {
   try {
     await refreshRanking(query.batchId)
     ElMessage.success('排行已刷新')
-    loadList()
-  } catch {
-    ElMessage.success('排行已刷新')
+    reload()
+  } catch (e) {
+    console.error('刷新排行失败:', e)
+    ElMessage.error('刷新失败，请重试')
   }
 }
 
@@ -182,4 +177,5 @@ onMounted(() => { loadBatches(); loadCategories() })
   border-radius: 999px;
   background: color-mix(in srgb, var(--brand-soft) 70%, transparent);
 }
+
 </style>

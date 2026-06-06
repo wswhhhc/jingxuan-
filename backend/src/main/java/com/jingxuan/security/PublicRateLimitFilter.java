@@ -1,6 +1,8 @@
 package com.jingxuan.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.jingxuan.common.Result;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -13,8 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @RequiredArgsConstructor
@@ -22,10 +23,16 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
 
     private static final int LIMIT = 20;
     private static final long WINDOW_MS = 1000L;
-    private static final String TEST_TRIGGER_HEADER = "X-RateLimit-Test";
 
     private final ObjectMapper objectMapper;
-    private final Map<String, Counter> counters = new ConcurrentHashMap<>();
+
+    /**
+     * 按 IP+URI 限流，窗口 1 秒后自动过期，最大缓存 10000 条
+     */
+    private final Cache<String, Counter> counters = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterWrite(1, TimeUnit.SECONDS)
+            .build();
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -37,20 +44,16 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if ("burst".equalsIgnoreCase(request.getHeader(TEST_TRIGGER_HEADER))) {
-            writeLimited(response);
-            return;
-        }
-
         String key = request.getRemoteAddr() + ":" + request.getRequestURI();
         long now = System.currentTimeMillis();
-        Counter counter = counters.compute(key, (k, old) -> {
-            if (old == null || now - old.windowStart >= WINDOW_MS) {
-                return new Counter(now, 1);
-            }
-            old.count++;
-            return old;
-        });
+
+        Counter counter = counters.get(key, k -> new Counter(now));
+        if (now - counter.windowStart >= WINDOW_MS) {
+            counter.windowStart = now;
+            counter.count = 1;
+        } else {
+            counter.count++;
+        }
 
         if (counter.count > LIMIT) {
             writeLimited(response);
@@ -67,12 +70,12 @@ public class PublicRateLimitFilter extends OncePerRequestFilter {
     }
 
     private static class Counter {
-        private final long windowStart;
+        private long windowStart;
         private int count;
 
-        private Counter(long windowStart, int count) {
+        private Counter(long windowStart) {
             this.windowStart = windowStart;
-            this.count = count;
+            this.count = 1;
         }
     }
 }
