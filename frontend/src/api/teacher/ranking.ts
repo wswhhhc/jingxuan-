@@ -34,8 +34,8 @@ export function getRankingBatches() {
   return request.get('/teacher/ranking/batches')
 }
 
-export function getRankingCategories() {
-  return request.get<CategoryItem[]>('/teacher/ranking/categories')
+export function getRankingCategories(batchId?: number) {
+  return request.get<CategoryItem[]>('/teacher/ranking/categories', { params: { batchId } })
 }
 
 export function refreshRanking(batchId: number) {

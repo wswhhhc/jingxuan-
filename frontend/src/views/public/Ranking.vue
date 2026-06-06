@@ -38,7 +38,7 @@
 
       <el-form :model="query" inline class="ranking-filters">
         <el-form-item label="批次">
-          <el-select v-model="query.batchId" placeholder="选择批次" clearable @change="loadList">
+          <el-select v-model="query.batchId" placeholder="选择批次" clearable @change="onBatchChange">
             <el-option v-for="b in batches" :key="b.batchId" :label="b.batchName" :value="b.batchId" />
           </el-select>
         </el-form-item>
@@ -136,7 +136,7 @@ const loadBatches = async () => {
 
 const loadCategories = async () => {
   try {
-    const res = await getRankingCategories()
+    const res = await getRankingCategories(query.batchId)
     categories.value = res.data || []
   } catch {
     categories.value = []
@@ -151,6 +151,14 @@ const loadList = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 批次切换时重新加载分类和榜单
+const onBatchChange = (val: number | undefined) => {
+  query.batchId = val
+  query.category = undefined
+  loadCategories()
+  loadList()
 }
 
 onMounted(() => {
