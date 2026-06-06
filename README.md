@@ -88,25 +88,52 @@ bash deploy-server.sh
 ```
 /opt/jingxuan/
 ├── backend/
-│   ├── jingxuan-backend-1.0.0.jar    # 编译后的后端可执行 JAR
+│   ├── jingxuan-backend-1.0.0.jar     # 编译后的后端可执行 JAR
 │   ├── AdminNotifyController.java     # 管理端通知控制器（源码参考）
 │   ├── RegistrationController.java    # 注册控制器（源码参考）
+│   ├── src/                           # 后端源码
 │   └── META-INF/maven/.../pom.xml     # Maven 依赖清单
-├── frontend/dist/                     # 构建后的前端静态资源
-│   └── index.html                     # SPA 入口
+├── frontend/
+│   ├── dist/                          # 构建后的前端静态资源
+│   │   └── index.html                 # SPA 入口
+│   └── src/                           # 前端源码
+├── deploy/
+│   ├── deploy-server.sh               # 一键部署脚本
+│   ├── ecosystem.config.cjs           # PM2 进程配置
+│   └── nginx-jingxuan.conf            # Nginx 反向代理配置
 ├── sql/
 │   ├── base/init_schema.sql           # 基础建表（8 张系统表）
 │   └── business/
 │       ├── work_schema.sql            # 业务表（12 张）
 │       ├── test_data.sql              # 测试种子数据
 │       └── yyyy-MM-dd-*.sql           # 增量迁移（按时间执行）
-├── uploads/                           # 用户上传文件（前端 .gitignore 忽略）
+├── uploads/                           # 用户上传文件（.gitignore 忽略）
 ├── .env.example                       # 环境变量模板
 ├── .gitignore
-├── ecosystem.config.cjs               # PM2 进程配置
-├── nginx-jingxuan.conf                # Nginx 反向代理配置
-└── deploy-server.sh                   # 一键部署脚本
+├── CLAUDE.md                          # 项目文档与开发指引
+└── README.md
 ```
+
+## 后端架构
+
+四端通过 **Adapter 控制器** 桥接前端 URL 路径与后端业务模块：
+
+| 控制器 | 路径前缀 | 职责 |
+|--------|----------|------|
+| `AdminApiController` | `/admin/*` | 审核、用户、字典、日志、奖项、评分批次等 |
+| `TeacherApiController` | `/teacher/*` | 评分、排行榜、历史记录、仪表盘 |
+| `StudentApiController` | `/student/*` | 作品 CRUD、提交、我的排行 |
+| `PublicApiController` | `/public/*` | 作品浏览、排行榜、评论 |
+| `NotificationController` | `/{role}/notify/*` | 三端通知统一处理 |
+| `AuthController` | `/auth/*` | 登录、注册、用户信息 |
+
+前端请求经 Nginx → 后端时，`/api` 前缀被剥离，由各 Adapter 控制器分发至对应 Service。
+
+## 业务模块
+
+`src/main/java/com/jingxuan/modules/` 下按业务拆分：
+
+审核 → 评分 → 排行榜 → 发布 → 评论 → 奖项 → 通知 → 公告 → 字典 → 敏感词审核 → 日志 → 用户导入
 
 ## 评分规则
 
