@@ -91,6 +91,17 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
     }
 
     @Override
+    public java.util.List<ScoreBatch> getAvailableBatchesForStudent(Long userId) {
+        return lambdaQuery()
+                .eq(ScoreBatch::getStatus, 1)
+                .eq(ScoreBatch::getDeleted, 0)
+                .le(ScoreBatch::getStartTime, java.time.LocalDateTime.now())
+                .ge(ScoreBatch::getEndTime, java.time.LocalDateTime.now())
+                .orderByDesc(ScoreBatch::getCreateTime)
+                .list();
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteBatch(Long id) {
         baseMapper.deleteById(id);
