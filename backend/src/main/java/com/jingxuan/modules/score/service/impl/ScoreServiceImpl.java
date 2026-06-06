@@ -3,6 +3,7 @@ package com.jingxuan.modules.score.service.impl;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.SysDict;
@@ -132,6 +133,9 @@ public class ScoreServiceImpl extends ServiceImpl<WorkScoreMapper, WorkScore> im
         score.setPracticality(request.getPracticality());
         score.setTotal(total);
         score.setComment(request.getComment());
+        if (score.getId() == null) {
+            score.setId(IdWorker.getId());
+        }
         workScoreMapper.upsert(
                 score.getId(), score.getWorkId(), score.getTeacherId(),
                 score.getBatchId(), score.getInnovation(), score.getDifficulty(),
