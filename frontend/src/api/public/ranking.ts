@@ -30,6 +30,6 @@ export function getRankingBatches() {
   return request.get('/public/ranking/batches')
 }
 
-export function getRankingCategories() {
-  return request.get<string[]>('/public/ranking/categories')
+export function getRankingCategories(batchId?: number) {
+  return request.get<string[]>('/public/ranking/categories', { params: { batchId } })
 }

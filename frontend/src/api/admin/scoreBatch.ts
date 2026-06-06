@@ -9,6 +9,8 @@ export interface ScoreBatchItem {
   status: number
   rankPublished: number
   createTime: string
+  noticeTitle?: string
+  noticeContent?: string
 }
 
 export function getBatchList(pageNum: number, pageSize: number) {

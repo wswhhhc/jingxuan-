@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>评分批次列表</span>
-          <el-button type="primary" @click="openDialog()">新建批次</el-button>
+          <el-button type="primary" @click="openWizard()">新建批次</el-button>
         </div>
       </template>
 
@@ -17,6 +17,12 @@
           <template #default="{ row }">{{ row.endTime?.replace('T', ' ') }}</template>
         </el-table-column>
         <el-table-column prop="classScopes" label="适用范围" width="180" show-overflow-tooltip />
+        <el-table-column label="通知" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.noticeTitle" type="success" size="small">已配置</el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
@@ -24,12 +30,13 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="360" fixed="right">
+        <el-table-column label="操作" width="400" fixed="right">
           <template #default="{ row }">
             <div class="batch-actions">
-              <el-button size="small" @click="openDialog(row)">编辑</el-button>
+              <el-button size="small" @click="openWizard(row)">编辑</el-button>
               <el-button size="small" plain @click="viewDetail(row)">详情</el-button>
               <el-button size="small" type="primary" @click="viewScores(row)">评分明细</el-button>
+              <el-button size="small" @click="editNotice(row)">通知</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
             </div>
           </template>
@@ -47,8 +54,16 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑批次' : '新建批次'" width="550px" destroy-on-close>
-      <el-form :model="form" label-width="100px" ref="formRef" :rules="rules">
+    <!-- ===== 3 步向导弹窗 ===== -->
+    <el-dialog v-model="wizardVisible" :title="wizardTitle" width="680px" destroy-on-close :close-on-click-modal="false">
+      <el-steps :active="step" finish-status="success" align-center style="margin-bottom:28px">
+        <el-step title="基本信息" />
+        <el-step title="奖项配置" />
+        <el-step title="通知发布" />
+      </el-steps>
+
+      <!-- Step 1: 基本信息 -->
+      <el-form v-show="step === 0" :model="form" label-width="100px" ref="formRef" :rules="rules">
         <el-form-item label="批次名称" prop="batchName">
           <el-input v-model="form.batchName" placeholder="请输入批次名称" />
         </el-form-item>
@@ -99,12 +114,105 @@
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" />
         </el-form-item>
       </el-form>
+
+      <!-- Step 2: 奖项配置 -->
+      <div v-show="step === 1" class="step-prizes">
+        <div class="step-prizes__toolbar">
+          <span class="step-prizes__tip">配置该批次的奖项等级与奖品名额（可跳过，后续在"奖品配置"中管理）</span>
+          <el-button size="small" type="primary" @click="addPrizeRow">新增奖项</el-button>
+        </div>
+        <el-table :data="prizeRows" stripe style="width:100%">
+          <el-table-column label="等级" width="100">
+            <template #default="{ row }">
+              <el-select v-model="row.rewardLevel" placeholder="等级" size="small" style="width:90px">
+                <el-option label="一等奖" value="一等奖" />
+                <el-option label="二等奖" value="二等奖" />
+                <el-option label="三等奖" value="三等奖" />
+                <el-option label="优秀奖" value="优秀奖" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="奖项名称" width="140">
+            <template #default="{ row }">
+              <el-input v-model="row.rewardName" placeholder="如：第一名" size="small" />
+            </template>
+          </el-table-column>
+          <el-table-column label="奖品说明" min-width="200">
+            <template #default="{ row }">
+              <el-input v-model="row.prizeName" placeholder="如：荣誉证书 + 500元京东卡" size="small" />
+            </template>
+          </el-table-column>
+          <el-table-column label="名额" width="80">
+            <template #default="{ row }">
+              <el-input-number v-model="row.quota" :min="1" :max="999" size="small" style="width:70px" />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="60">
+            <template #default="scope">
+              <el-button size="small" type="danger" link @click="prizeRows.splice(scope.$index, 1)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-if="prizeRows.length === 0" class="step-prizes__empty">暂未配置奖项，可跳过此步骤</div>
+      </div>
+
+      <!-- Step 3: 通知发布 -->
+      <div v-show="step === 2" class="step-notice">
+        <div class="step-notice__tip">
+          通知将发送至该批次班级范围内的所有学生（包括后续注册的学生）。
+          通知范围沿用第一步中设置的适用范围。
+        </div>
+        <el-form label-width="100px">
+          <el-form-item label="通知标题">
+            <el-input v-model="noticeTitle" placeholder="如：2026春学期作品提交要求" />
+          </el-form-item>
+          <el-form-item label="通知内容">
+            <el-input
+              v-model="noticeContent"
+              type="textarea"
+              :rows="10"
+              placeholder="请填写作品要求、需上传的材料等说明…
+建议包含以下内容：
+1. 作品主题与要求
+2. 需上传的材料（源码压缩包、演示视频、封面图等）
+3. 材料格式与大小限制
+4. 提交截止时间提醒"
+            />
+          </el-form-item>
+        </el-form>
+        <div class="step-notice__actions">
+          <el-checkbox v-model="publishAfterSave">保存后立即发布通知</el-checkbox>
+        </div>
+      </div>
+
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">保存</el-button>
+        <el-button v-if="step > 0" @click="step--">上一步</el-button>
+        <el-button v-if="step < 2" type="primary" @click="nextStep">下一步</el-button>
+        <el-button v-if="step === 2" type="primary" :loading="submitting" @click="handleWizardSubmit">
+          完成创建
+        </el-button>
+        <el-button @click="wizardVisible = false">取消</el-button>
       </template>
     </el-dialog>
 
+    <!-- 通知编辑快捷弹窗（从列表行操作进入） -->
+    <el-dialog v-model="noticeVisible" title="编辑批次通知" width="600px" destroy-on-close>
+      <el-form label-width="100px">
+        <el-form-item label="通知标题">
+          <el-input v-model="noticeTitle" placeholder="如：2026春学期作品提交要求" />
+        </el-form-item>
+        <el-form-item label="通知内容">
+          <el-input v-model="noticeContent" type="textarea" :rows="10" placeholder="请填写作品要求、需上传的材料等说明…" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="noticeVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveNoticeOnly">保存通知</el-button>
+        <el-button type="success" @click="saveAndPublishNotice">保存并发布</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 详情弹窗 -->
     <el-dialog v-model="detailVisible" title="批次详情" width="500px" destroy-on-close>
       <template v-if="detail">
         <div class="detail-grid">
@@ -112,6 +220,7 @@
           <div class="detail-item"><label>开始时间</label><span>{{ detail.startTime?.replace('T', ' ') }}</span></div>
           <div class="detail-item"><label>结束时间</label><span>{{ detail.endTime?.replace('T', ' ') }}</span></div>
           <div class="detail-item"><label>适用范围</label><span>{{ detail.classScopes || '-' }}</span></div>
+          <div class="detail-item"><label>通知标题</label><span>{{ detail.noticeTitle || '-' }}</span></div>
           <div class="detail-item"><label>状态</label><span>
             <el-tag :type="detail.status === 1 ? 'success' : 'info'" size="small">
               {{ detail.status === 1 ? '启用' : '停用' }}
@@ -119,9 +228,14 @@
           </span></div>
           <div class="detail-item"><label>创建时间</label><span>{{ detail.createTime?.replace('T', ' ') }}</span></div>
         </div>
+        <div v-if="detail.noticeContent" class="detail-notice-content">
+          <label>通知内容</label>
+          <pre>{{ detail.noticeContent }}</pre>
+        </div>
       </template>
     </el-dialog>
 
+    <!-- 评分明细弹窗 -->
     <el-dialog v-model="scoreVisible" title="评分明细" width="900px" destroy-on-close top="5vh">
       <template v-if="scoreBatchId">
         <div style="margin-bottom:12px">
@@ -159,9 +273,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getBatchList, createBatch, updateBatch, getBatchScoreDetail, deleteBatch } from '@/api/admin/scoreBatch'
+import { createPrize } from '@/api/admin/prize'
 import type { ScoreBatchItem, BatchScoreDetail } from '@/api/admin/scoreBatch'
 import request from '@/api/request'
 
@@ -170,13 +285,15 @@ const list = ref<ScoreBatchItem[]>([])
 const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(20)
-const dialogVisible = ref(false)
-const detailVisible = ref(false)
-const submitting = ref(false)
+
+// ===== 向导 =====
+const wizardVisible = ref(false)
+const step = ref(0)
 const isEdit = ref(false)
-const detail = ref<ScoreBatchItem | null>(null)
-const formRef = ref<any>(null)
-const classes = ref<{ id: number; dictLabel: string; dictValue: string }[]>([])
+const editingId = ref<number | undefined>(undefined)
+const submitting = ref(false)
+
+const wizardTitle = computed(() => isEdit.value ? '编辑批次' : '新建批次')
 
 const form = reactive({
   batchName: '',
@@ -203,28 +320,53 @@ const rules = {
   }]
 }
 
+const formRef = ref<any>(null)
+const classes = ref<{ id: number; dictLabel: string; dictValue: string }[]>([])
+
 const ALL_SCHOOL_LABEL = '全校可参与'
+
+// ===== 奖项 =====
+interface PrizeRow {
+  rewardLevel: string
+  rewardName: string
+  prizeName: string
+  quota: number
+}
+const prizeRows = ref<PrizeRow[]>([])
+
+function addPrizeRow() {
+  prizeRows.value.push({ rewardLevel: '', rewardName: '', prizeName: '', quota: 1 })
+}
+
+// ===== 通知 =====
+const noticeTitle = ref('')
+const noticeContent = ref('')
+const publishAfterSave = ref(true)
+
+// 快捷通知编辑（从列表行进入）
+const noticeVisible = ref(false)
+const noticeBatchId = ref<number>(0)
+
+// ===== 详情 =====
+const detailVisible = ref(false)
+const detail = ref<ScoreBatchItem | null>(null)
+
+// ===== 评分明细 =====
+const scoreVisible = ref(false)
+const scoreLoading = ref(false)
+const scoreBatchId = ref<number>(0)
+const rankingPublished = ref(false)
+const scoreWorks = ref<BatchScoreDetail[]>([])
+
+// ===== 方法 =====
 
 const normalizeClassScopes = (value?: string) => {
   const raw = (value || '').trim()
-  if (!raw) {
-    return {
-      allSchool: false,
-      classScopeIds: [] as string[]
-    }
-  }
-
+  if (!raw) return { allSchool: false, classScopeIds: [] as string[] }
   if (raw === ALL_SCHOOL_LABEL || raw === '全校' || raw.toLowerCase() === 'all') {
-    return {
-      allSchool: true,
-      classScopeIds: [] as string[]
-    }
+    return { allSchool: true, classScopeIds: [] as string[] }
   }
-
-  return {
-    allSchool: false,
-    classScopeIds: raw.split(/[,，]/).map(item => item.trim()).filter(Boolean)
-  }
+  return { allSchool: false, classScopeIds: raw.split(/[,，]/).map(s => s.trim()).filter(Boolean) }
 }
 
 const serializeClassScopes = () => {
@@ -235,9 +377,7 @@ const loadClasses = async () => {
   try {
     const res = await request.get('/admin/dict/classes')
     classes.value = res.data || []
-  } catch {
-    classes.value = []
-  }
+  } catch { classes.value = [] }
 }
 
 const loadList = async () => {
@@ -246,24 +386,43 @@ const loadList = async () => {
     const res = await getBatchList(pageNum.value, pageSize.value)
     list.value = res.data?.records || []
     total.value = res.data?.total || 0
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
-const openDialog = (row?: ScoreBatchItem) => {
+// ===== 向导步骤 =====
+async function nextStep() {
+  if (step.value === 0) {
+    const valid = await formRef.value?.validate().catch(() => false)
+    if (!valid) return
+  }
+  step.value++
+}
+
+function openWizard(row?: ScoreBatchItem) {
+  step.value = 0
+  prizeRows.value = []
+  noticeTitle.value = ''
+  noticeContent.value = ''
+  publishAfterSave.value = true
+  submitting.value = false
+
   if (row) {
     isEdit.value = true
+    editingId.value = row.id
     form.id = row.id
     form.batchName = row.batchName
     form.classScopes = row.classScopes
-    const parsedScopes = normalizeClassScopes(row.classScopes)
-    form.allSchool = parsedScopes.allSchool
-    form.classScopeIds = parsedScopes.classScopeIds
+    const parsed = normalizeClassScopes(row.classScopes)
+    form.allSchool = parsed.allSchool
+    form.classScopeIds = parsed.classScopeIds
     form.status = row.status
     form.timeRange = [row.startTime, row.endTime]
+    // 回填通知
+    if (row.noticeTitle) noticeTitle.value = row.noticeTitle
+    if (row.noticeContent) noticeContent.value = row.noticeContent
   } else {
     isEdit.value = false
+    editingId.value = undefined
     form.id = undefined
     form.batchName = ''
     form.classScopes = ''
@@ -272,18 +431,10 @@ const openDialog = (row?: ScoreBatchItem) => {
     form.status = 1
     form.timeRange = null
   }
-  dialogVisible.value = true
+  wizardVisible.value = true
 }
 
-const viewDetail = (row: ScoreBatchItem) => {
-  detail.value = row
-  detailVisible.value = true
-}
-
-const handleSubmit = async () => {
-  const valid = await formRef.value?.validate().catch(() => false)
-  if (!valid) return
-
+async function handleWizardSubmit() {
   submitting.value = true
   try {
     serializeClassScopes()
@@ -293,22 +444,87 @@ const handleSubmit = async () => {
       classScopeIds: undefined,
       allSchool: undefined,
       startTime: timeRange?.[0],
-      endTime: timeRange?.[1]
+      endTime: timeRange?.[1],
+      noticeTitle: noticeTitle.value || undefined,
+      noticeContent: noticeContent.value || undefined,
     }
+
+    let batchId: number
     if (isEdit.value && form.id) {
       await updateBatch(data)
+      batchId = form.id
       ElMessage.success('更新成功')
     } else {
-      await createBatch(data)
+      const res = await createBatch(data)
+      batchId = res.data
       ElMessage.success('创建成功')
     }
-    dialogVisible.value = false
+
+    // 保存奖项
+    for (const prize of prizeRows.value) {
+      if (prize.rewardLevel && prize.rewardName) {
+        try {
+          await createPrize({ ...prize, batchId })
+        } catch { /* skip individual failures */ }
+      }
+    }
+
+    // 保存并可选发布通知
+    if (noticeTitle.value && noticeContent.value) {
+      await request.put(`/score-batch/${batchId}/notice`, {
+        noticeTitle: noticeTitle.value,
+        noticeContent: noticeContent.value
+      })
+      if (publishAfterSave.value) {
+        try {
+          await request.post(`/score-batch/${batchId}/publish-notice`)
+        } catch { /* may fail if no students yet */ }
+      }
+    }
+
+    wizardVisible.value = false
     loadList()
-  } catch {
-    // handled by interceptor
-  } finally {
-    submitting.value = false
-  }
+  } catch { /* handled by interceptor */ }
+  finally { submitting.value = false }
+}
+
+// ===== 通知快捷编辑 =====
+function editNotice(row: ScoreBatchItem) {
+  noticeBatchId.value = row.id
+  noticeTitle.value = row.noticeTitle || ''
+  noticeContent.value = row.noticeContent || ''
+  noticeVisible.value = true
+}
+
+async function saveNoticeOnly() {
+  try {
+    await request.put(`/score-batch/${noticeBatchId.value}/notice`, {
+      noticeTitle: noticeTitle.value,
+      noticeContent: noticeContent.value
+    })
+    ElMessage.success('通知已保存')
+    noticeVisible.value = false
+    loadList()
+  } catch { /* handled */ }
+}
+
+async function saveAndPublishNotice() {
+  try {
+    await request.put(`/score-batch/${noticeBatchId.value}/notice`, {
+      noticeTitle: noticeTitle.value,
+      noticeContent: noticeContent.value
+    })
+    await request.post(`/score-batch/${noticeBatchId.value}/publish-notice`)
+    ElMessage.success('通知已保存并发布')
+    noticeVisible.value = false
+    loadList()
+  } catch { /* handled */ }
+}
+
+// ===== 其他 =====
+const viewDetail = (row: ScoreBatchItem) => {
+  detail.value = row
+  detailVisible.value = true
 }
 
 const handleDelete = async (row: ScoreBatchItem) => {
@@ -320,12 +536,6 @@ const handleDelete = async (row: ScoreBatchItem) => {
   } catch { /* cancelled or failed */ }
 }
 
-const scoreVisible = ref(false)
-const scoreLoading = ref(false)
-const scoreBatchId = ref<number>(0)
-const rankingPublished = ref(false)
-const scoreWorks = ref<BatchScoreDetail[]>([])
-
 const viewScores = async (row: ScoreBatchItem) => {
   scoreBatchId.value = row.id
   rankingPublished.value = row.rankPublished === 1
@@ -334,11 +544,8 @@ const viewScores = async (row: ScoreBatchItem) => {
   try {
     const res = await getBatchScoreDetail(row.id)
     scoreWorks.value = res.data || []
-  } catch {
-    scoreWorks.value = []
-  } finally {
-    scoreLoading.value = false
-  }
+  } catch { scoreWorks.value = [] }
+  finally { scoreLoading.value = false }
 }
 
 const publishRanking = async (batchId: number) => {
@@ -359,18 +566,13 @@ const unpublishRanking = async (batchId: number) => {
   } catch { /* handled */ }
 }
 
-onMounted(() => {
-  loadList()
-  loadClasses()
-})
+onMounted(() => { loadList(); loadClasses() })
 </script>
 
 <style scoped>
 .card-header { display: flex; justify-content: space-between; align-items: center; }
 .pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.detail-item label { display: block; font-size: 12px; color: #999; margin-bottom: 4px; }
-.detail-item span { font-size: 14px; color: #333; }
+.text-muted { color: var(--text-muted); }
 
 .batch-actions {
   display: flex;
@@ -379,23 +581,32 @@ onMounted(() => {
   flex-wrap: nowrap;
   gap: 8px;
 }
-
 .batch-actions :deep(.el-button) {
   min-width: 0;
   margin-left: 0;
   padding-inline: 14px;
 }
 
-.scope-field {
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  gap: 12px;
+.scope-field { display: flex; width: 100%; flex-direction: column; gap: 12px; }
+.scope-field__hint { color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.detail-item label { display: block; font-size: 12px; color: #999; margin-bottom: 4px; }
+.detail-item span { font-size: 14px; color: #333; }
+.detail-notice-content { margin-top: 16px; }
+.detail-notice-content label { display: block; font-size: 12px; color: #999; margin-bottom: 4px; }
+.detail-notice-content pre {
+  margin: 0; padding: 12px; border-radius: 8px;
+  background: #f5f7fa; font-size: 13px; line-height: 1.6; white-space: pre-wrap;
 }
 
-.scope-field__hint {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.6;
+.step-prizes__toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.step-prizes__tip { font-size: 13px; color: var(--text-muted); }
+.step-prizes__empty { text-align: center; padding: 32px 0; color: var(--text-muted); }
+
+.step-notice__tip {
+  font-size: 13px; color: var(--text-muted);
+  background: #f0f9eb; border: 1px solid #e1f3d8;
+  border-radius: 8px; padding: 12px 16px; margin-bottom: 18px;
 }
+.step-notice__actions { margin-top: 12px; }
 </style>
