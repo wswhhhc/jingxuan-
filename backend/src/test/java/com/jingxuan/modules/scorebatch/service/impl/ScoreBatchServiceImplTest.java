@@ -5,6 +5,8 @@ import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.Work;
 import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.ScoreBatchMapper;
+import com.jingxuan.mapper.SysDictMapper;
+import com.jingxuan.mapper.SysUserMapper;
 import com.jingxuan.mapper.WorkMapper;
 import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.rank.service.RankService;
@@ -36,6 +38,8 @@ class ScoreBatchServiceImplTest {
     @Mock private WorkMapper workMapper;
     @Mock private NotificationService notificationService;
     @Mock private RankService rankService;
+    @Mock private SysUserMapper sysUserMapper;
+    @Mock private SysDictMapper sysDictMapper;
 
     @Captor private ArgumentCaptor<ScoreBatch> batchCaptor;
 
@@ -45,7 +49,7 @@ class ScoreBatchServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        scoreBatchService = new ScoreBatchServiceImpl(workMapper, notificationService, rankService);
+        scoreBatchService = new ScoreBatchServiceImpl(workMapper, notificationService, rankService, sysUserMapper, sysDictMapper);
         ReflectionTestUtils.setField(scoreBatchService, "baseMapper", scoreBatchMapper);
     }
 
