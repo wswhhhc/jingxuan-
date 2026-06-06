@@ -30,7 +30,10 @@
               </div>
               <span class="notify-time">{{ item.createTime }}</span>
             </div>
-            <div class="notify-content">{{ item.content }}</div>
+            <div class="notify-content" :class="{ 'notify-content--long': isContentLong(item.content) }">
+              {{ item.content }}
+            </div>
+            <span v-if="isContentLong(item.content)" class="notify-expand" @click.stop="showDetail(item)">查看详情 →</span>
           </article>
         </div>
 
@@ -50,6 +53,15 @@
         />
       </div>
     </section>
+
+    <!-- 通知详情弹窗 -->
+    <el-dialog v-model="detailVisible" :title="detailItem?.title || '通知详情'" width="600px">
+      <div class="notify-detail-meta">
+        <span>{{ detailItem?.createTime }}</span>
+        <el-tag v-if="detailItem && !detailItem.isRead" size="small" type="danger">未读</el-tag>
+      </div>
+      <div class="notify-detail-content">{{ detailItem?.content }}</div>
+    </el-dialog>
   </div>
 </template>
 
@@ -83,6 +95,15 @@ const total = ref(0)
 const page = ref(1)
 const size = ref(20)
 const unreadOnly = ref(false)
+const detailVisible = ref(false)
+const detailItem = ref<NotifyItem | null>(null)
+
+const isContentLong = (content: string) => content && content.length > 120
+
+const showDetail = (item: NotifyItem) => {
+  detailItem.value = item
+  detailVisible.value = true
+}
 
 const emitNotifyChanged = () => {
   window.dispatchEvent(new CustomEvent(props.eventName))
@@ -195,5 +216,41 @@ onMounted(loadList)
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.8;
+}
+
+.notify-content--long {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notify-expand {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--brand);
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.notify-expand:hover {
+  opacity: 0.7;
+}
+
+.notify-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.notify-detail-content {
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.9;
+  white-space: pre-wrap;
 }
 </style>
