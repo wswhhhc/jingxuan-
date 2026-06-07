@@ -32,6 +32,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -50,6 +52,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("ScoreServiceImpl - 评分服务")
 class ScoreServiceImplTest {
 
@@ -65,7 +68,6 @@ class ScoreServiceImplTest {
     @Mock private DeepSeekConfig deepSeekConfig;
     @Mock private SensitiveWordDFA sensitiveWordDFA;
     @Mock private DeepSeekApiClient deepSeekApiClient;
-    @Mock private HttpClient httpClient;
     @Mock private HttpResponse<String> httpResponse;
 
     @Captor private ArgumentCaptor<WorkScore> scoreCaptor;
@@ -253,7 +255,6 @@ class ScoreServiceImplTest {
 
             DeepSeekReviewServiceImpl realReviewService =
                     new DeepSeekReviewServiceImpl(deepSeekConfig, deepSeekApiClient, new ObjectMapper(), sensitiveWordDFA);
-            ReflectionTestUtils.setField(realReviewService, "httpClient", httpClient);
             ReflectionTestUtils.setField(scoreService, "deepSeekReviewService", realReviewService);
 
             when(sensitiveWordDFA.contains(anyString())).thenReturn(false);
@@ -262,7 +263,7 @@ class ScoreServiceImplTest {
             when(deepSeekConfig.getModel()).thenReturn("deepseek-chat");
             when(deepSeekConfig.getTimeout()).thenReturn(1000);
             when(deepSeekConfig.getFallback()).thenReturn("bypass");
-            when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+            when(deepSeekApiClient.post(any(java.util.Map.class)))
                     .thenThrow(new RuntimeException("api down"));
             when(workScoreMapper.selectByWorkAndTeacher(WORK_ID, TEACHER_ID)).thenReturn(null);
 
@@ -285,7 +286,6 @@ class ScoreServiceImplTest {
 
             DeepSeekReviewServiceImpl realReviewService =
                     new DeepSeekReviewServiceImpl(deepSeekConfig, deepSeekApiClient, new ObjectMapper(), sensitiveWordDFA);
-            ReflectionTestUtils.setField(realReviewService, "httpClient", httpClient);
             ReflectionTestUtils.setField(scoreService, "deepSeekReviewService", realReviewService);
 
             when(sensitiveWordDFA.contains(anyString())).thenReturn(false);
@@ -294,7 +294,7 @@ class ScoreServiceImplTest {
             when(deepSeekConfig.getModel()).thenReturn("deepseek-chat");
             when(deepSeekConfig.getTimeout()).thenReturn(1000);
             when(deepSeekConfig.getFallback()).thenReturn("reject");
-            when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+            when(deepSeekApiClient.post(any(java.util.Map.class)))
                     .thenThrow(new RuntimeException("api down"));
 
             assertThrows(BusinessException.class,

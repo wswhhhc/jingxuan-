@@ -39,6 +39,7 @@ class RewardIssueServiceImplTest {
     @BeforeEach
     void setUp() {
         rewardIssueService = new RewardIssueServiceImpl(workMapper, rewardConfigMapper, workMemberService, notificationService);
+        ReflectionTestUtils.setField(rewardIssueService, "baseMapper", rewardIssueMapper);
     }
 
     private RewardIssue createIssue(Long id, Long rewardId, Long workId, Integer status) {

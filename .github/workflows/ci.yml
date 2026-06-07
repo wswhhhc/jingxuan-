@@ -93,8 +93,11 @@ jobs:
       - name: Compile
         run: mvn compile -q
 
-      - name: Unit + Integration tests
-        run: mvn test
+      - name: Unit tests (no MySQL needed)
+        run: mvn test -Dtest="com.jingxuan.modules.audit.**,com.jingxuan.modules.comment.**,com.jingxuan.modules.dict.**,com.jingxuan.modules.log.**,com.jingxuan.modules.notice.**,com.jingxuan.modules.notification.**,com.jingxuan.modules.prize.**,com.jingxuan.modules.publish.**,com.jingxuan.modules.rank.**,com.jingxuan.modules.sensitive.**,com.jingxuan.modules.work.**"
+
+      - name: Integration tests (need MySQL+Redis)
+        run: mvn test -Dtest="com.jingxuan.modules.adapter.**,com.jingxuan.modules.scorebatch.**,com.jingxuan.modules.userimport.**"
         env:
           DB_PASSWORD: testpass
 

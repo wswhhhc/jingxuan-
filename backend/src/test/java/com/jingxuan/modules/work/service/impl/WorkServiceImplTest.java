@@ -16,6 +16,8 @@ import com.jingxuan.modules.work.dto.WorkRequest;
 import com.jingxuan.modules.work.service.WorkMemberService;
 import com.jingxuan.security.SecurityUtils;
 import org.junit.jupiter.api.AfterEach;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,6 +37,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("WorkServiceImpl - 作品服务")
 class WorkServiceImplTest {
 

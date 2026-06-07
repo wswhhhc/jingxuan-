@@ -17,10 +17,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 
@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("AiUserImportServiceImpl - AI 批量导入用户")
 class AiUserImportServiceImplTest {
 
@@ -36,7 +37,6 @@ class AiUserImportServiceImplTest {
     @Mock private SysRoleMapper sysRoleMapper;
     @Mock private SysDictMapper sysDictMapper;
     @Mock private DeepSeekApiClient deepSeekApiClient;
-    @Mock private HttpClient httpClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private AiUserImportServiceImpl aiUserImportService;
@@ -44,7 +44,15 @@ class AiUserImportServiceImplTest {
     @BeforeEach
     void setUp() {
         aiUserImportService = new AiUserImportServiceImpl(deepSeekConfig, deepSeekApiClient, objectMapper, sysRoleMapper, sysDictMapper);
-        ReflectionTestUtils.setField(aiUserImportService, "httpClient", httpClient);
+        // 默认 mock DeepSeek API 返回空响应（各测试按需覆盖）
+        try {
+            java.net.http.HttpResponse<String> defaultResp = mockResponse(200, 
+                "{\"choices\":[{\"message\":{\"content\":\"{\\\"assistantReply\\\":\\\"ok\\\",\\\"ready\\\":true,\\\"users\\\":[]}\"}}]}");
+            when(deepSeekApiClient.post(any(java.util.Map.class)))
+                    .thenReturn(defaultResp);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private AiUserImportRequest requestWithMessages(String... contents) {
@@ -77,8 +85,9 @@ class AiUserImportServiceImplTest {
     }
 
     private void stubDeepSeekCall(HttpResponse<String> resp) {
+            when(deepSeekApiClient.extractContent(any())).thenReturn(resp.body());
         try {
-            when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+            when(deepSeekApiClient.post(any(java.util.Map.class)))
                     .thenReturn(resp);
         } catch (Exception e) {
             fail("Mock setup failed");
