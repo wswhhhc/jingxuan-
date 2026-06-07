@@ -95,8 +95,15 @@ class FileUploadTest extends BaseApiTest {
 
     @Test
     @DisplayName("上传附件并绑定到自己的作品")
-    void uploadAndBindToOwnWork() {
-        byte[] content = "bound zip content".getBytes();
+    void uploadAndBindToOwnWork() throws Exception {
+        // 创建真实 ZIP 内容（空压缩包），通过魔数校验
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(bos)) {
+            zos.putNextEntry(new java.util.zip.ZipEntry("test.txt"));
+            zos.write("bound zip content".getBytes());
+            zos.closeEntry();
+        }
+        byte[] content = bos.toByteArray();
         ByteArrayResource fileResource = new ByteArrayResource(content) {
             @Override
             public String getFilename() {
@@ -238,7 +245,7 @@ class FileUploadTest extends BaseApiTest {
         long duration = System.currentTimeMillis() - start;
 
         assertEquals(200, resp.getStatusCode().value());
-        assertTrue(resp.getBody().contains("\"code\":400") || resp.getBody().contains("压缩包文件不能超过200MB"),
+        assertTrue(resp.getBody().contains("\"code\":400") && (resp.getBody().contains("压缩包文件不能超过200MB") || resp.getBody().contains("文件内容与扩展名不匹配")),
                 "超大压缩包应返回业务 400，实际: " + resp.getBody());
         assertTrue(duration < 15000, "超大文件失败提示应在 15s 内返回，实际: " + duration + "ms");
         Files.deleteIfExists(tempFile);
@@ -267,7 +274,7 @@ class FileUploadTest extends BaseApiTest {
                     String.class);
 
             assertEquals(200, resp.getStatusCode().value());
-            assertTrue(resp.getBody().contains("\"code\":400") || resp.getBody().contains("压缩包文件不能超过200MB"),
+            assertTrue(resp.getBody().contains("\"code\":400") && (resp.getBody().contains("压缩包文件不能超过200MB") || resp.getBody().contains("文件内容与扩展名不匹配")),
                     "第 " + (i + 1) + " 次重试仍应稳定返回业务 400，实际: " + resp.getBody());
         }
 

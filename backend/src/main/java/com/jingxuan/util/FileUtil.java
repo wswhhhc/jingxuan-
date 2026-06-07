@@ -89,6 +89,14 @@ public class FileUtil {
         }
     }
 
+    /** Hutool FileTypeUtil 已知可识别的扩展名列表 */
+    private static final Set<String> KNOWN_TYPES = Set.of(
+            "jpg", "jpeg", "png", "gif", "bmp", "webp", "ico",
+            "mp3", "wav", "avi", "mpg", "mov", "wmv", "flv", "mp4",
+            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+            "zip", "rar", "7z", "gz", "tar",
+            "xml", "html", "htm", "js", "css", "svg");
+
     /**
      * 验证真实类型与声明的扩展名是否一致
      *
@@ -97,11 +105,17 @@ public class FileUtil {
      * @return true 如果类型不匹配
      */
     public static boolean isRealTypeMismatch(String realType, String declaredExt) {
-        if (realType == null) return false; // 无法检测时放行
+        // 无法检测魔数时：如果声明的扩展名是 Hutool 已知类型，拒绝上传
+        if (realType == null) {
+            return KNOWN_TYPES.contains(declaredExt.toLowerCase());
+        }
 
         // jpeg/jpg 互为别名
         if ("jpeg".equals(realType) && "jpg".equals(declaredExt)) return false;
         if ("jpg".equals(realType) && "jpeg".equals(declaredExt)) return false;
+
+        // mov/mp4 互为别名（MP4 文件魔数与 MOV 相同）
+        if ("mov".equals(realType) && "mp4".equals(declaredExt)) return false;
 
         // 禁止 HTML/JS/SVG/XML 伪装成图片或其它格式（XSS 向量）
         if (Set.of("html", "htm", "js", "svg", "xml").contains(realType.toLowerCase())) {
