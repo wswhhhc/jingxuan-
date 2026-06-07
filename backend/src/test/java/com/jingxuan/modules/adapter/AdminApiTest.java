@@ -576,7 +576,7 @@ class AdminApiTest extends BaseApiTest {
     }
 
     private void attachFileToWorkAsTestStu(long workId, String filename) {
-        byte[] content = ("content-for-" + filename).getBytes();
+        byte[] content = createValidFileContent(filename);
         org.springframework.core.io.ByteArrayResource fileResource =
                 new org.springframework.core.io.ByteArrayResource(content) {
                     @Override
@@ -607,5 +607,25 @@ class AdminApiTest extends BaseApiTest {
         } catch (Exception e) {
             throw new RuntimeException("解析附件上传响应失败: " + resp.getBody(), e);
         }
+    }
+
+    /** 生成魔数校验可通过的文件内容（真实 zip / mp4 头） */
+    private static byte[] createValidFileContent(String filename) {
+        if (filename.endsWith(".mp4")) {
+            return new byte[]{
+                0x00, 0x00, 0x00, 0x18, 'f', 't', 'y', 'p',
+                'm', 'p', '4', '2', 0x00, 0x00, 0x00, 0x00,
+                'm', 'p', '4', '2', 'm', 'p', '4', '1'
+            };
+        }
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(bos)) {
+            zos.putNextEntry(new java.util.zip.ZipEntry("content.txt"));
+            zos.write(("content-for-" + filename).getBytes());
+            zos.closeEntry();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+        return bos.toByteArray();
     }
 }
