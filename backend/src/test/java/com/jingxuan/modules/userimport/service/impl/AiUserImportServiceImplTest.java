@@ -46,8 +46,9 @@ class AiUserImportServiceImplTest {
         aiUserImportService = new AiUserImportServiceImpl(deepSeekConfig, deepSeekApiClient, objectMapper, sysRoleMapper, sysDictMapper);
         // 默认 mock DeepSeek API 返回空响应（各测试按需覆盖）
         try {
-            java.net.http.HttpResponse<String> defaultResp = mockResponse(200, 
+            java.net.http.HttpResponse<String> defaultResp = mockResponse(200,
                 "{\"choices\":[{\"message\":{\"content\":\"{\\\"assistantReply\\\":\\\"ok\\\",\\\"ready\\\":true,\\\"users\\\":[]}\"}}]}");
+            doReturn(defaultResp.body()).when(deepSeekApiClient).extractContent(anyString());
             when(deepSeekApiClient.post(any(java.util.Map.class)))
                     .thenReturn(defaultResp);
         } catch (Exception e) {
@@ -85,7 +86,7 @@ class AiUserImportServiceImplTest {
     }
 
     private void stubDeepSeekCall(HttpResponse<String> resp) {
-            when(deepSeekApiClient.extractContent(any())).thenReturn(resp.body());
+        try { doReturn(resp.body()).when(deepSeekApiClient).extractContent(anyString()); } catch (Exception e) { throw new RuntimeException(e); }
         try {
             when(deepSeekApiClient.post(any(java.util.Map.class)))
                     .thenReturn(resp);
