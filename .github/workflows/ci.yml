@@ -32,7 +32,7 @@ jobs:
         run: npx vue-tsc --noEmit
 
       - name: Unit tests
-        run: npx vitest run
+        run: npm run test -- --run
 
       - name: Build
         run: npm run build
@@ -87,15 +87,13 @@ jobs:
         run: |
           sed '/^USE jingxuan;/d; /^CREATE DATABASE/d' ../sql/base/init_schema.sql | mysql -h127.0.0.1 -uroot -ptestpass jingxuan_test
           sed '/^USE jingxuan;/d' ../sql/business/work_schema.sql | mysql -h127.0.0.1 -uroot -ptestpass jingxuan_test
+          sed '/^USE jingxuan;/d' ../sql/business/test_data.sql | mysql -h127.0.0.1 -uroot -ptestpass jingxuan_test
           for f in ../sql/business/2026-*.sql; do sed '/^USE jingxuan;/d' "$f" | mysql -h127.0.0.1 -uroot -ptestpass jingxuan_test; done
 
       - name: Compile
         run: mvn compile -q
 
-      - name: Unit tests
-        run: mvn test -Dtest='!com.jingxuan.modules.adapter.*'
-
-      - name: Integration tests
+      - name: Unit + Integration tests
         run: mvn test
         env:
           DB_PASSWORD: testpass
