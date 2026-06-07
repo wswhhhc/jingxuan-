@@ -27,7 +27,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
+        run: npx vite build
 
   # ==========================================
   # 后端：编译 + 单元测试 + 打包
