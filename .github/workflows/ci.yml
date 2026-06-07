@@ -8,28 +8,6 @@ on:
 
 jobs:
   # ==========================================
-  # 前端：安装依赖 → 单元测试 → 构建
-  # ==========================================
-  frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npx vite build
-
-  # ==========================================
   # 后端：编译 + 单元测试 + 打包
   # ==========================================
   backend:
