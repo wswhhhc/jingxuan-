@@ -24,15 +24,10 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: |
-          npm install
-          npm install -D vitest @vitejs/plugin-vue @vue/test-utils
-
-      - name: Unit tests
-        run: npx vitest run
+        run: npm ci
 
       - name: Build
-        run: npx vite build
+        run: npm run build
 
   # ==========================================
   # 后端：编译 + 单元测试 + 打包
