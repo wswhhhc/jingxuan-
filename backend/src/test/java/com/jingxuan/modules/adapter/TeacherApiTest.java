@@ -153,6 +153,25 @@ class TeacherApiTest extends BaseApiTest {
     }
 
     @Nested
+    @DisplayName("GET /teacher/ranking/batches - 排行批次")
+    class RankingBatches {
+
+        @Test
+        @DisplayName("返回排行批次列表")
+        void batches() {
+            ApiResponse resp = teacherApi.get("/teacher/ranking/batches");
+            resp.assertOk();
+        }
+
+        @Test
+        @DisplayName("返回排行分类")
+        void categories() {
+            ApiResponse resp = teacherApi.get("/teacher/ranking/categories", Map.of("batchId", 1));
+            resp.assertOk();
+        }
+    }
+
+    @Nested
     @DisplayName("通知")
     class Notify {
 

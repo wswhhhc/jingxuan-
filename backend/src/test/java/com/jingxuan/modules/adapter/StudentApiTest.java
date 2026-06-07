@@ -174,6 +174,19 @@ class StudentApiTest extends BaseApiTest {
     }
 
     @Nested
+    @DisplayName("GET /student/batch/available - 可用批次")
+    class AvailableBatches {
+
+        @Test
+        @DisplayName("返回当前学生可参与的批次")
+        void available() {
+            ApiResponse resp = studentApi.get("/student/batch/available");
+            resp.assertOk();
+            assertTrue(resp.getDataNode().isArray());
+        }
+    }
+
+    @Nested
     @DisplayName("通知相关")
     class Notifications {
 

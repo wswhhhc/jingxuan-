@@ -133,6 +133,19 @@ class AuthApiTest extends BaseApiTest {
     }
 
     @Nested
+    @DisplayName("PUT /auth/profile - 更新个人信息")
+    class Profile {
+
+        @Test
+        @DisplayName("更新手机号和邮箱")
+        void updateProfile() {
+            ApiResponse resp = studentApi.put("/auth/profile",
+                    Map.of("phone", "13800138001", "email", "student@test.com"));
+            resp.assertOk();
+        }
+    }
+
+    @Nested
     @DisplayName("GET /auth/check-first-login - 首次登录检查")
     class CheckFirstLogin {
 
