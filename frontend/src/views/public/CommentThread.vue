@@ -176,7 +176,7 @@ function formatTime(iso: string): string {
 .comment-user { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .role-tag { font-size: 11px; }
 .comment-time { font-size: 12px; color: var(--text-muted); }
-.comment-content { font-size: 14px; color: var(--text-secondary); line-height: 1.85; white-space: pre-wrap; }
+.comment-content { font-size: 14px; color: var(--text-secondary); line-height: 1.85; white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; }
 .reply-to { color: var(--brand); margin-right: 4px; }
 .comment-actions { margin-top: 8px; }
 .reply-input-box { margin-top: 12px; }
