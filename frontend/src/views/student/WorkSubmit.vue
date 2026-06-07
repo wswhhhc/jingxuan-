@@ -46,7 +46,22 @@
 
           <div class="workspace-form-grid">
             <el-form-item label="技术栈" prop="techStack">
-              <el-input v-model="form.techStack" placeholder="如 Vue3, Spring Boot, MySQL（逗号分隔）" />
+              <el-select
+                v-model="form.techStack"
+                multiple
+                filterable
+                allow-create
+                default-first-option
+                placeholder="请选择或输入技术栈（可多选）"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="tag in tagOptions"
+                  :key="tag.name"
+                  :label="tag.name"
+                  :value="tag.name"
+                />
+              </el-select>
             </el-form-item>
             <el-form-item label="指导教师" prop="advisor">
               <el-input v-model="form.advisor" placeholder="请输入指导教师姓名" />
@@ -190,10 +205,12 @@ const pageTitle = computed(() => {
   return isEdit.value ? '编辑作品' : '提交作品'
 })
 
+const tagOptions = ref<{ id: number; name: string }[]>([])
+
 const form = reactive<WorkForm>({
   title: '',
   summary: '',
-  techStack: '',
+  techStack: [] as unknown as string,
   advisor: '',
   coverUrl: '',
   videoUrl: '',
@@ -218,7 +235,8 @@ const rules = {
     { required: true, message: '请输入作品简介', trigger: 'blur' },
   ],
   techStack: [
-    { required: true, message: '请输入技术栈', trigger: 'blur' },
+    { required: true, message: '请选择技术栈', trigger: 'change' },
+    { type: 'array', min: 1, message: '至少选择一个技术栈', trigger: 'change' },
   ],
   previewUrl: [
     { required: true, message: '请输入服务器访问地址', trigger: 'blur' },
@@ -272,7 +290,7 @@ async function loadWork(id: string | number) {
     Object.assign(form, {
       title: data.title,
       summary: data.summary,
-      techStack: data.techStack,
+      techStack: data.techStack ? data.techStack.split(',').map((s: string) => s.trim()) : [],
       advisor: data.advisor,
       coverUrl: data.coverUrl,
       videoUrl: resolveUploadedVideoUrl(data.attachments) || data.videoUrl || '',
@@ -296,7 +314,17 @@ async function loadWork(id: string | number) {
   }
 }
 
+async function loadTags() {
+  try {
+    const res = await request.get<{ id: number; name: string }[]>('/public/tags')
+    tagOptions.value = res.data || []
+  } catch {
+    tagOptions.value = []
+  }
+}
+
 onMounted(() => {
+  loadTags()
   loadAvailableBatches()
   const workId = getRouteWorkId()
   if (workId) {
@@ -402,8 +430,11 @@ function handleFileRemove(_file: any, list: any[]) {
 function buildSubmitData(): WorkForm {
   form.videoUrl = resolveUploadedVideoUrl(form.attachments)
   form.previewUrl = normalizePreviewUrl(form.previewUrl)
+  // 技术栈数组转逗号分隔字符串（后端兼容格式）
+  const techStackStr = Array.isArray(form.techStack) ? form.techStack.join(',') : form.techStack
   return {
     ...form,
+    techStack: techStackStr,
     attachments: form.attachments,
     members: form.members.filter((m) => m.studentName && m.studentNo),
   }

@@ -30,7 +30,7 @@ export interface WorkForm {
   id?: string | number
   title: string
   summary: string
-  techStack: string
+  techStack: string | string[]
   advisor: string
   coverUrl: string
   videoUrl: string
@@ -45,7 +45,7 @@ export interface WorkItem {
   id: string | number
   title: string
   summary: string
-  techStack: string
+  techStack: string | string[]
   advisor: string
   coverUrl: string
   videoUrl: string

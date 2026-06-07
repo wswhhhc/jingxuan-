@@ -373,7 +373,12 @@ const activeVideoUrl = ref('')
 const activeVideoName = ref('')
 
 
-const techTags = computed(() => work.value?.techStack?.split(',').map((t) => t.trim()).filter(Boolean) || [])
+const techTags = computed(() => {
+  const ts = work.value?.techStack
+  if (!ts) return []
+  if (Array.isArray(ts)) return ts
+  return ts.split(',').map((t: string) => t.trim()).filter(Boolean)
+})
 const isLoggedIn = ref(hasLoginToken())
 const isAdmin = computed(() => currentUser.value?.roleCode === 'ROLE_ADMIN')
 const isWorkLeader = computed(() => {
