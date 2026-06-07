@@ -48,6 +48,12 @@ public class CommentServiceImpl extends ServiceImpl<WorkCommentMapper, WorkComme
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long addComment(Long workId, Long userId, String content, Long parentId, String guestName) {
+        if (content == null || content.trim().isEmpty()) {
+            throw new BusinessException("评论内容不能为空");
+        }
+        if (content.length() > 500) {
+            throw new BusinessException("评论内容不能超过500字");
+        }
         DeepSeekReviewService.ReviewResult review = deepSeekReviewService.review(content, "comment");
         if (!review.isPassed()) {
             throw new BusinessException("评论内容违规：" + review.getReason());

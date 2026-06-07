@@ -46,7 +46,7 @@
             type="textarea"
             :rows="2"
             :placeholder="replyPlaceholder"
-            maxlength="200"
+            maxlength="500"
             show-word-limit
           />
           <div class="reply-actions">

@@ -76,9 +76,11 @@
             <span v-else>顶级评论</span>
           </template>
         </el-table-column>
-        <el-table-column label="评论内容" min-width="320" show-overflow-tooltip>
+        <el-table-column label="评论内容" min-width="320">
           <template #default="{ row }">
-            <div class="content-cell">{{ row.content }}</div>
+            <div class="content-cell" :class="{ expanded: row._expanded }" @click="toggleExpand(row)">
+              {{ row.content }}
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="评论时间" width="180" />
@@ -142,6 +144,10 @@ const openWork = (workId: number) => {
   window.open(`/works/${workId}`, '_blank')
 }
 
+const toggleExpand = (row: AdminCommentItem & { _expanded?: boolean }) => {
+  row._expanded = !row._expanded
+}
+
 const handleDelete = async (row: AdminCommentItem) => {
   try {
     await ElMessageBox.confirm(
@@ -173,7 +179,16 @@ onMounted(() => {
 .sub-text { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 .content-cell {
   line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.content-cell:hover { color: var(--brand); }
+.content-cell.expanded {
+  display: block;
+  -webkit-line-clamp: unset;
 }
 </style>
