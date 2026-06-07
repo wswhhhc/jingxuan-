@@ -19,6 +19,8 @@ cd frontend && npm run dev          # 开发服务器（Vite HMR）
 npm run build                       # 类型检查 + 生产构建 → frontend/dist/
 npm run test                        # Vitest 单元测试
 npm run test:watch                  # 监听模式
+npm run lint                        # ESLint 代码检查
+npm run format                      # Prettier 自动格式化
 
 # 后端（需在 backend/ 目录下）
 mvn compile                         # 编译
