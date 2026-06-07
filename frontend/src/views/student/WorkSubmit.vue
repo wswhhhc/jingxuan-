@@ -57,9 +57,9 @@
               >
                 <el-option
                   v-for="tag in tagOptions"
-                  :key="tag.name"
-                  :label="tag.name"
-                  :value="tag.name"
+                  :key="tag.dictLabel"
+                  :label="tag.dictLabel"
+                  :value="tag.dictLabel"
                 />
               </el-select>
             </el-form-item>
@@ -205,7 +205,7 @@ const pageTitle = computed(() => {
   return isEdit.value ? '编辑作品' : '提交作品'
 })
 
-const tagOptions = ref<{ id: number; name: string }[]>([])
+const tagOptions = ref<{ id: number; dictLabel: string }[]>([])
 
 const form = reactive<WorkForm>({
   title: '',
@@ -316,7 +316,7 @@ async function loadWork(id: string | number) {
 
 async function loadTags() {
   try {
-    const res = await request.get<{ id: number; name: string }[]>('/public/tags')
+    const res = await request.get<{ id: number; dictLabel: string }[]>('/public/tags')
     tagOptions.value = res.data || []
   } catch {
     tagOptions.value = []

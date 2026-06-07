@@ -15,9 +15,7 @@ export interface PublicWorkListParams {
 
 export interface TagItem {
   id: number
-  name: string
-  color: string
-  type: string
+  dictLabel: string
 }
 
 /* ============ API ============ */

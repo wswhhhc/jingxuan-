@@ -87,11 +87,8 @@ public class PublicWorkFacade {
         return dictService.getByType("class");
     }
 
-    public List<com.jingxuan.entity.Tag> getPublicTags() {
-        return tagMapper.selectList(
-                Wrappers.<com.jingxuan.entity.Tag>lambdaQuery()
-                        .eq(com.jingxuan.entity.Tag::getDeleted, 0)
-                        .orderByAsc(com.jingxuan.entity.Tag::getSort));
+    public List<SysDict> getPublicTags() {
+        return dictService.getByType("tech_stack");
     }
 
     @Transactional(rollbackFor = Exception.class)

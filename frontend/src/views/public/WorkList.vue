@@ -57,8 +57,8 @@
             <el-option
               v-for="tag in tags"
               :key="tag.id"
-              :label="tag.name"
-              :value="tag.name"
+              :label="tag.dictLabel"
+              :value="tag.dictLabel"
             />
           </el-select>
         </el-form-item>
