@@ -1,0 +1,161 @@
+name: CI
+
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+    branches: [master]
+
+jobs:
+  # ==========================================
+  # 前端：类型检查 + 单元测试 + 构建
+  # ==========================================
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx vue-tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test -- --run
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+  # ==========================================
+  # 后端：编译 + 单元测试 + 集成测试
+  # ==========================================
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpass
+          MYSQL_DATABASE: jingxuan_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -u root -ptestpass"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: maven
+
+      - name: Init test database
+        run: |
+          sed '/^USE jingxuan;/d; /^CREATE DATABASE/d' ../sql/base/init_schema.sql | mysql -h127.0.0.1 -uroot -ptestpass jingxuan_test
+          sed '/^USE jingxuan;/d' ../sql/business/work_schema.sql | mysql -h127.0.0.1 -uroot -ptestpass jingxuan_test
+          for f in ../sql/business/2026-*.sql; do sed '/^USE jingxuan;/d' "$f" | mysql -h127.0.0.1 -uroot -ptestpass jingxuan_test; done
+
+      - name: Compile
+        run: mvn compile -q
+
+      - name: Unit tests
+        run: mvn test -Dtest='!com.jingxuan.modules.adapter.*'
+
+      - name: Integration tests
+        run: mvn test
+        env:
+          DB_PASSWORD: testpass
+
+      - name: Package
+        run: mvn package -Dmaven.test.skip=true -q
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/jingxuan-backend-1.0.0.jar
+
+  # ==========================================
+  # Docker 构建（master 分支）
+  # ==========================================
+  docker:
+    if: github.ref == 'refs/heads/master'
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: jingxuan:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================
+  # 冒烟测试（部署后验证）
+  # ==========================================
+  smoke-test:
+    if: github.ref == 'refs/heads/master'
+    needs: [docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run smoke test
+        run: |
+          docker compose up -d
+          sleep 30
+          bash scripts/smoke-test.sh http://localhost:80
