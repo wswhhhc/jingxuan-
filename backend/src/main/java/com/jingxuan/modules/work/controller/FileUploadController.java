@@ -95,7 +95,7 @@ public class FileUploadController {
                 return Result.fail("视频文件不能超过1.5GB");
             }
         } else if (size > CommonConstants.FILE_MAX_SIZE) {
-            return Result.fail("源代码压缩包文件不能超过500MB");
+            return Result.fail("压缩包文件不能超过200MB");
         }
 
         try {

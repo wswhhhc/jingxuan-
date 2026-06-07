@@ -9,6 +9,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 /**
  * Web MVC 配置 — CORS、静态资源映射
  */
@@ -33,5 +36,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
         Path absoluteUploadPath = Paths.get(uploadPath).toAbsolutePath().normalize();
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(absoluteUploadPath.toUri().toString());
+        // Knife4j / Swagger 静态资源
+        registry.addResourceHandler("/webjars/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/");
+        registry.addResourceHandler("/doc.html")
+                .addResourceLocations("classpath:/META-INF/resources/");
+        registry.addResourceHandler("/swagger-ui/**")
+                .addResourceLocations("classpath:/META-INF/resources/webjars/swagger-ui/");
     }
 }

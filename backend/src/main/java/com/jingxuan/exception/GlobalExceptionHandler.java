@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.stream.Collectors;
@@ -85,8 +86,17 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Result<Void> handleMissingParamException(MissingServletRequestParameterException e) {
-        return Result.fail("缺少必填参数: " + e.getParameterName());
+    public Result<Void> handleMissingParam(MissingServletRequestParameterException e) {
+        return Result.fail(400, "缺少必填参数: " + e.getParameterName());
+    }
+
+    /**
+     * 404 — 请求的资源不存在
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Result<Void> handleNoHandlerFound(NoHandlerFoundException e) {
+        return Result.fail(404, "请求的资源不存在");
     }
 
     /**
