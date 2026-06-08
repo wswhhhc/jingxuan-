@@ -155,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/student/auth'
 import { getPrizeList, createPrize, updatePrize, deletePrize, getPrizeBatches, getIssueList, issuePrize, cancelIssue, getRankedWorks } from '@/api/admin/prize'
@@ -214,6 +214,19 @@ const onRewardChange = async (rewardId: number) => {
 
 const selectRankedWork = (row: RankedWork) => {
   selectedRankedWork.value = row
+}
+
+const reloadIssue = async () => {
+  issueLoading.value = true
+  try {
+    const res = await getIssueList({ page: issuePage.value, size: issueSize.value })
+    issueList.value = (res.data?.records as IssueItem[]) || []
+    issueTotal.value = res.data?.total || 0
+  } catch (e) {
+    console.error('加载发放记录失败:', e)
+  } finally {
+    issueLoading.value = false
+  }
 }
 
 

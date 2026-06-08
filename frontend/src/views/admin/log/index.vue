@@ -64,7 +64,7 @@ import PaginationBar from '@/components/PaginationBar.vue'
 const page = ref(1)
 const size = ref(20)
 const actionFilter = ref('')
-const { loading, list, total, loadList } = useApiList<LogItem>(getLogList)
+const { loading, list, total, loadList } = useApiList<LogItem>(getLogList as any)
 const reload = () => loadList({ page: page.value, size: size.value, action: actionFilter.value || undefined })
 
 const methodTagType = (method: string) => {

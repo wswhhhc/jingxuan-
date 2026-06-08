@@ -58,33 +58,37 @@
 
       <!-- ====== 作品信息 + 团队成员 ====== -->
       <div class="detail-grid reveal-up reveal-delay-1">
-        <section class="surface-panel">
-          <div class="section-heading">
-            <h2 class="section-heading__title">作品信息</h2>
-          </div>
-          <div class="info-list">
-            <div class="info-item">
-              <span class="info-label">技术栈</span>
-              <div class="info-value tag-wrap">
-                <el-tag v-for="tag in techTags" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
-                <span v-if="techTags.length === 0" class="text-muted">暂无技术栈信息</span>
+        <section class="surface-panel work-info-panel" :class="{ 'work-info-panel--expanded': infoExpanded }">
+            <div class="section-heading">
+              <h2 class="section-heading__title">作品信息</h2>
+            </div>
+            <div class="work-info-content">
+              <div class="info-list">
+                <div class="info-item">
+                  <span class="info-label">技术栈</span>
+                  <div class="info-value tag-wrap">
+                    <el-tag v-for="tag in techTags" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
+                    <span v-if="techTags.length === 0" class="text-muted">暂无技术栈信息</span>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">指导教师</span>
+                  <span class="info-value">{{ work.advisor || '无' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">提交时间</span>
+                  <span class="info-value">{{ work.submitTime }}</span>
+                </div>
+              </div>
+              <div v-if="work.runDescription" class="detail-block">
+                <h3>运行说明</h3>
+                <pre class="run-desc">{{ work.runDescription }}</pre>
               </div>
             </div>
-            <div class="info-item">
-              <span class="info-label">指导教师</span>
-              <span class="info-value">{{ work.advisor || '无' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">提交时间</span>
-              <span class="info-value">{{ work.submitTime }}</span>
-            </div>
-          </div>
-
-          <div v-if="work.runDescription" class="detail-block">
-            <h3>运行说明</h3>
-            <pre class="run-desc">{{ work.runDescription }}</pre>
-          </div>
-        </section>
+            <button v-if="isInfoOverflow" class="info-expand-toggle" @click="infoExpanded = !infoExpanded">
+              {{ infoExpanded ? '收起' : '查看详细' }}
+            </button>
+          </section>
 
         <section class="surface-panel">
           <div class="section-heading">
@@ -93,7 +97,7 @@
           </div>
           <div v-if="work.members?.length" class="member-list">
             <div v-for="m in work.members" :key="m.id || m.studentNo" class="member-item">
-              <el-avatar :size="36" :src="m.avatar">{{ m.avatar ? '' : m.studentName.charAt(0) }}</el-avatar>
+              <el-avatar :size="36" :src="(m as any).avatar">{{ (m as any).avatar ? '' : m.studentName.charAt(0) }}</el-avatar>
               <div class="member-info">
                 <div class="member-name">
                   <span>{{ m.studentName }}</span>
@@ -335,7 +339,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture, Files, Document, VideoCamera, StarFilled, View } from '@element-plus/icons-vue'
@@ -352,6 +356,8 @@ const route = useRoute()
 const router = useRouter()
 const work = ref<WorkItem | null>(null)
 const loading = ref(false)
+const infoExpanded = ref(false)
+const isInfoOverflow = ref(false)
 const comments = ref<CommentItem[]>([])
 const commentTotal = ref(0)
 const commentPage = ref(1)
@@ -477,6 +483,7 @@ function normalizePreviewUrl(value: string) {
 
 async function loadDetail() {
   loading.value = true
+  infoExpanded.value = false
   try {
     const res = await getPublicWorkDetail(getRouteWorkId())
     const data = res.data
@@ -484,11 +491,20 @@ async function loadDetail() {
     liked.value = data.liked ?? false
     likeCount.value = data.likeCount ?? 0
     viewCount.value = data.viewCount ?? 0
+    await nextTick()
+    checkInfoOverflow()
   } catch (e: any) {
     console.error('WorkDetail load failed:', e)
     ElMessage.error('加载失败: ' + (e?.message || '未知错误'))
   } finally {
     loading.value = false
+  }
+}
+
+function checkInfoOverflow() {
+  const panel = document.querySelector('.work-info-panel .work-info-content')
+  if (panel) {
+    isInfoOverflow.value = panel.scrollHeight > panel.clientHeight
   }
 }
 
@@ -868,6 +884,54 @@ onBeforeUnmount(() => {
   line-height: 1.85;
   white-space: pre-wrap;
   font-family: inherit;
+}
+
+/* ===== 作品信息面板 ===== */
+.work-info-panel {
+  display: flex;
+  flex-direction: column;
+}
+.work-info-content {
+  flex: 1;
+  max-height: 560px;
+  overflow: hidden;
+  transition: max-height 0.35s ease;
+  position: relative;
+}
+.work-info-content::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4em;
+  background: linear-gradient(transparent, var(--page-bg));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.work-info-panel:not(.work-info-panel--expanded) .work-info-content::after {
+  opacity: 1;
+}
+.work-info-panel--expanded .work-info-content {
+  max-height: none;
+}
+.work-info-panel--expanded .work-info-content::after {
+  opacity: 0;
+}
+.info-expand-toggle {
+  margin-top: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--brand, #409eff);
+  font-size: 14px;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: opacity var(--transition-fast);
+}
+.info-expand-toggle:hover {
+  opacity: 0.75;
 }
 
 .member-item {
