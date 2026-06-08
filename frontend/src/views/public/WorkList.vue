@@ -116,7 +116,7 @@
               <span>{{ item.submitterName || '匿名作者' }}</span>
             </div>
             <h3 class="work-card__title">{{ item.title }}</h3>
-            <p class="work-card__summary">{{ item.summary || '暂无作品简介。' }}</p>
+            <p class="work-card__summary">{{ item.summary ? item.summary.length > 100 ? item.summary.slice(0, 100) + '...' : item.summary : '暂无作品简介。' }}</p>
             <div class="work-card__tags" v-if="item.tags?.length">
               <el-tag
                 v-for="tag in item.tags.slice(0, 4)"
