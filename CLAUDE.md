@@ -12,6 +12,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **部署**：Docker / PM2 + Nginx
 - **CI/CD**：GitHub Actions（push 自动跑测试 + 构建）
 
+## 快速代码探索
+
+本项目使用 Codegraph 建立代码索引。需要理解某段逻辑、查找符号或追踪调用链路时，优先使用：
+
+- `codegraph_explore` — 回答"X 怎么工作的 / 在哪 / 架构是怎样的"，直接返回相关源码（Read 等价，一次性返回多个文件）
+- `codegraph_search` — 按名称查找符号位置
+- `codegraph_callers` / `codegraph_callees` / `codegraph_impact` — 调用链追踪
+- `codegraph_files` — 按目录/语言查看文件树
+
+**不要**用 grep + Read 绕路——codegraph 已经建好索引了，一次调用就能拿到完整源码。
+
 ## 开发命令
 
 ```bash
@@ -215,7 +226,14 @@ frontend/src/
 
 ### 测试结构
 
-**后端集成测试**：扩展 `BaseApiTest`（Spring Boot Test + 随机端口），使用内置 `ApiClient` 发送 HTTP 请求并解析 JSON 响应：
+**命名规范：**
+- 后端单元测试：`*Test.java`（如 `WorkServiceImplTest.java`），扩展 `BaseServiceTest`，Mockito 模拟 Mapper 层
+- 后端集成测试：`*ApiTest.java`（如 `AdminApiTest.java`），扩展 `BaseApiTest`（Spring Boot Test + 随机端口）
+- 前端测试：`*.test.ts`（如 `index.test.ts`），Vitest + `@vue/test-utils`
+- 前端测试工具：`src/views/__tests__/test-utils.ts` 提供通用测试辅助函数
+
+**后端集成测试**：扩展 `BaseApiTest`，使用内置 `ApiClient` 发送 HTTP 请求并解析 JSON 响应：
+
 - `adminApi`：管理员（admin / admin123）
 - `teacherApi`：教师（t001 / test123）
 - `studentApi`：学生（2022001 / test123）
@@ -235,6 +253,8 @@ mvn test -Dtest="AdminApiTest"
 ```
 
 **前端测试**：Vitest + @vue/test-utils。
+
+**测试数据**：`sql/business/test_data.sql` 包含学生、教师、作品、评分等演示数据，用于开发调试和答辩演示。
 
 ### 测试状态
 
