@@ -165,7 +165,7 @@
       <template #footer>
         <div class="dialog-actions">
           <el-button @click="rejectDialogVisible = false">取消</el-button>
-          <el-button type="danger" @click="detail && submitAudit(detail!.id, 'rejected')">确认驳回</el-button>
+          <el-button type="danger" @click="submitAudit(rejectWorkId!, 'rejected')">确认驳回</el-button>
         </div>
       </template>
     </el-dialog>
@@ -212,6 +212,7 @@ const detail = ref<WorkDetailVO | null>(null)
 const detailVisible = ref(false)
 const rejectDialogVisible = ref(false)
 const rejectReason = ref('')
+const rejectWorkId = ref<number | null>(null)
 const auditHistory = ref<AuditHistoryItem[]>([])
 
 const query = reactive<AuditQuery>({
@@ -294,6 +295,7 @@ const showDetail = async (row: WorkListVO) => {
 const handleAudit = (row: WorkListVO, result: 'approved' | 'rejected') => {
   if (result === 'rejected') {
     rejectReason.value = ''
+    rejectWorkId.value = row.id
     rejectDialogVisible.value = true
   } else {
     ElMessageBox.confirm('确认通过该作品审核？', '提示').then(() => submitAudit(row.id, 'approved'))
