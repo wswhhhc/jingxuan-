@@ -2,6 +2,7 @@ package com.jingxuan.modules.deleterequest.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.jingxuan.entity.DeleteRequest;
 import com.jingxuan.common.PageResult;
 import com.jingxuan.common.PageUtil;
 import com.jingxuan.entity.DeleteRequest;
@@ -48,11 +49,10 @@ public class DeleteRequestServiceImpl extends ServiceImpl<DeleteRequestMapper, D
         }
 
         // 检查是否已有待处理的申请
-        long pending = lambdaQuery()
+        long pending = baseMapper.selectCount(Wrappers.<DeleteRequest>lambdaQuery()
                 .eq(DeleteRequest::getWorkId, workId)
                 .eq(DeleteRequest::getStatus, 0)
-                .eq(DeleteRequest::getDeleted, 0)
-                .count();
+                .eq(DeleteRequest::getDeleted, 0));
         if (pending > 0) {
             throw new BusinessException("该作品已有待处理的删除申请");
         }
