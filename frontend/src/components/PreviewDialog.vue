@@ -2,8 +2,8 @@
   <el-dialog
     v-model="visible"
     title="在线体验"
-    :width="isFullscreen ? '100vw' : '94vw'"
-    :top="isFullscreen ? '0' : '2vh'"
+    :width="isFullscreen ? '100vw' : '70vw'"
+    :top="isFullscreen ? '0' : '5vh'"
     :fullscreen="isFullscreen"
     :destroy-on-close="true"
     class="preview-dialog"
@@ -132,7 +132,7 @@ defineExpose({ open, close })
 <style>
 .preview-dialog .el-dialog__body {
   padding: 0 !important;
-  height: calc(100vh - 60px) !important;
+  height: 80vh !important;
   overflow: hidden !important;
 }
 .preview-dialog--fullscreen .el-dialog__body {
