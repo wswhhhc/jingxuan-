@@ -19,6 +19,7 @@ import com.jingxuan.mapper.WorkMapper;
 import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.rank.service.RankService;
 import com.jingxuan.modules.scorebatch.service.ScoreBatchService;
+import com.jingxuan.modules.task.service.StudentTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
 
     private final WorkMapper workMapper;
     private final NotificationService notificationService;
+    private final StudentTaskService studentTaskService;
     private final RankService rankService;
     private final SysUserMapper sysUserMapper;
     private final SysDictMapper sysDictMapper;
@@ -187,19 +189,19 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void publishNotice(Long batchId) {
+    public void publishTask(Long batchId) {
         ScoreBatch batch = baseMapper.selectById(batchId);
         if (batch == null) {
             throw new BusinessException("评分批次不存在");
         }
         if (batch.getNoticeTitle() == null || batch.getNoticeContent() == null) {
-            throw new BusinessException("请先填写通知内容");
+            throw new BusinessException("请先填写待办要求");
         }
 
         // 解析班级范围
         Set<Long> classIdSet = parseClassScopes(batch.getClassScopes());
         if (classIdSet.isEmpty()) {
-            throw new BusinessException("该批次未设置班级范围，无法发送通知");
+            throw new BusinessException("该批次未设置班级范围，无法发布待办");
         }
 
         // 查找班级范围内所有启用状态的学生（按 class_id 匹配）
@@ -217,15 +219,27 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
                 .map(SysUser::getId)
                 .collect(Collectors.toList());
 
-        notificationService.sendBatchNotification(
-                userIds,
-                batch.getNoticeTitle(),
-                batch.getNoticeContent(),
-                "BATCH_NOTICE",
-                batchId
-        );
+        // 判断是否为重新发布（已存在该批次的待办）
+        boolean isRePublish = studentTaskService.lambdaQuery()
+                .eq(com.jingxuan.entity.StudentTask::getBatchId, batchId)
+                .eq(com.jingxuan.entity.StudentTask::getDeleted, 0)
+                .count() > 0;
 
-        log.info("批次通知已发布: batchId={}, title={}, 接收学生数={}", batchId, batch.getNoticeTitle(), userIds.size());
+        // 创建待办任务（如果已存在则更新内容并重置状态）
+        studentTaskService.batchCreateTasks(userIds, batchId, batch.getNoticeTitle(), batch.getNoticeContent());
+
+        // 重新发布时额外发送通知提醒学生
+        if (isRePublish) {
+            notificationService.sendBatchNotification(
+                    userIds,
+                    "待办要求已更新",
+                    "评分批次《" + batch.getBatchName() + "》的待办要求已更新，请注意查看",
+                    "TASK_UPDATE",
+                    batchId
+            );
+        }
+
+        log.info("批次待办已发布: batchId={}, title={}, 接收学生数={}", batchId, batch.getNoticeTitle(), userIds.size());
     }
 
     /**

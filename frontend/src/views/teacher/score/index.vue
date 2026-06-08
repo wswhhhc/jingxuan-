@@ -114,7 +114,7 @@
           </div>
 
           <div class="review-actions">
-            <el-button v-if="selectedWork.previewUrl" size="small" @click="openLink(selectedWork.previewUrl)">在线预览</el-button>
+            <el-button v-if="selectedWork.previewUrl" size="small" @click="openPreviewDialog">在线预览</el-button>
             <el-button v-if="selectedWork.videoUrl" size="small" type="success" @click="openVideoPlayer(selectedWork.videoUrl, '演示视频')">演示视频</el-button>
             <el-button v-if="selectedWorkScored" size="small" type="default" @click="scrollToForm">修改评分</el-button>
           </div>
@@ -138,7 +138,7 @@
                 <p class="material-card__meta">评分前可直接查看作品材料，不展示学生姓名、成员与提交人信息。</p>
               </div>
               <div class="material-actions">
-                <el-button v-if="selectedWork.previewUrl" size="small" @click="openLink(selectedWork.previewUrl)">在线预览</el-button>
+                <el-button v-if="selectedWork.previewUrl" size="small" @click="openPreviewDialog">在线预览</el-button>
                 <el-button v-if="selectedWork.videoUrl" size="small" type="success" @click="openVideoPlayer(selectedWork.videoUrl, '演示视频')">演示视频</el-button>
               </div>
             </div>
@@ -333,6 +333,8 @@
         </section>
     </div>
   </div>
+
+  <PreviewDialog ref="previewDialog" :url="previewUrl" />
 </template>
 
 <script setup lang="ts">
@@ -345,6 +347,7 @@ import { submitScore, getMyScore, getBatchList } from '@/api/teacher/score'
 import { getWorkDetail } from '@/api/teacher/work'
 import type { WorkDetailVO, WorkListVO } from '@/api/types'
 import { IMAGE_TYPES, VIDEO_TYPES, MEDIA_TYPES } from '@/api/types'
+import PreviewDialog from '@/components/PreviewDialog.vue'
 
 // ===== 评分维度常量 =====
 const DIMENSIONS = [
@@ -376,6 +379,8 @@ const batches = ref<{ id: number; batchName: string }[]>([])
 const total = ref(0)
 const selectedWork = ref<WorkDetailVO | null>(null)
 const selectedWorkScored = ref(false)
+const previewDialog = ref<InstanceType<typeof PreviewDialog> | null>(null)
+const previewUrl = ref('')
 
 /** 追踪当前选中的作品 ID，用于防止异步竞态 */
 const lastSelectedId = ref<number | null>(null)
@@ -661,6 +666,12 @@ const handleSubmit = async () => {
 const openLink = (url?: string) => {
   if (!url) return
   window.open(url, '_blank')
+}
+
+function openPreviewDialog() {
+  if (!selectedWork.value?.previewUrl) return
+  previewUrl.value = selectedWork.value.previewUrl
+  previewDialog.value?.open()
 }
 
 const openVideoPlayer = (url: string, name: string) => {

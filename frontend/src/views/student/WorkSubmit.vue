@@ -130,18 +130,6 @@
 
         <section class="workspace-form-section">
           <div class="workspace-form-section__header">
-            <h3 class="workspace-form-section__title">评分批次</h3>
-            <p class="workspace-form-section__desc">选择本次作品参与的评分批次，只有班级适用范围内的批次可选。</p>
-          </div>
-          <el-form-item label="选择批次">
-            <el-select v-model="form.batchId" placeholder="请选择批次（不选则自动匹配）" clearable style="width:100%">
-              <el-option v-for="b in availableBatches" :key="b.id" :label="b.batchName" :value="b.id" />
-            </el-select>
-          </el-form-item>
-        </section>
-
-        <section class="workspace-form-section">
-          <div class="workspace-form-section__header">
             <h3 class="workspace-form-section__title">团队成员</h3>
             <p class="workspace-form-section__desc">明确主创与成员信息，保持提交名单与展示信息的一致性。</p>
           </div>
@@ -195,7 +183,6 @@ const formRef = ref()
 const submitting = ref(false)
 const saving = ref(false)
 const fileList = ref<any[]>([])
-const availableBatches = ref<{ id: number; batchName: string }[]>([])
 const _pendingUploadNames = new Set<string>()
 const hasWorkId = computed(() => Boolean(getRouteWorkId()))
 const isEdit = computed(() => route.name === 'WorkEdit' || (hasWorkId.value && route.name !== 'WorkView'))
@@ -271,18 +258,6 @@ function getRouteWorkId() {
   return typeof id === 'string' ? id : Array.isArray(id) ? id[0] : ''
 }
 
-async function loadAvailableBatches() {
-  try {
-    const res = await request.get('/student/batch/available')
-    availableBatches.value = (res.data || []).map((b: any) => ({
-      id: b.id,
-      batchName: b.batchName,
-    }))
-  } catch {
-    availableBatches.value = []
-  }
-}
-
 async function loadWork(id: string | number) {
   try {
     const res = await getWorkDetail(id)
@@ -325,7 +300,12 @@ async function loadTags() {
 
 onMounted(() => {
   loadTags()
-  loadAvailableBatches()
+  // 从待办页面传入 batchId，自动设置
+  const batchIdFromQuery = route.query?.batchId
+  if (batchIdFromQuery) {
+    const id = Number(batchIdFromQuery)
+    if (id) form.batchId = id
+  }
   const workId = getRouteWorkId()
   if (workId) {
     loadWork(workId)

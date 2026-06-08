@@ -11,6 +11,7 @@ import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.*;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.sensitive.service.DeepSeekReviewService;
+import com.jingxuan.modules.task.service.StudentTaskService;
 import com.jingxuan.modules.work.dto.WorkMemberDTO;
 import com.jingxuan.modules.work.dto.WorkRequest;
 import com.jingxuan.modules.work.service.WorkMemberService;
@@ -51,6 +52,7 @@ class WorkServiceImplTest {
     @Mock private SysDictMapper sysDictMapper;
     @Mock private LogService logService;
     @Mock private DeepSeekReviewService deepSeekReviewService;
+    @Mock private StudentTaskService studentTaskService;
 
     @Captor private ArgumentCaptor<Work> workCaptor;
 
@@ -70,7 +72,8 @@ class WorkServiceImplTest {
 
         workService = new WorkServiceImpl(sysUserMapper, workMemberService, workMemberMapper,
                 workAttachmentMapper, workPublishMapper, scoreBatchMapper, logService,
-                contentReviewService, attachmentBindingService, memberPolicyService, queryValidator);
+                contentReviewService, attachmentBindingService, memberPolicyService, queryValidator,
+                studentTaskService);
         // baseMapper（从 ServiceImpl 继承）
         ReflectionTestUtils.setField(workService, "baseMapper", workMapper);
 

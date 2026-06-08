@@ -59,12 +59,13 @@ public interface ScoreBatchService extends IService<ScoreBatch> {
     boolean isRankPublished(Long batchId);
 
     /**
-     * 保存批次通知内容
+     * 保存批次待办要求内容
      */
     void saveNotice(Long batchId, String noticeTitle, String noticeContent);
 
     /**
-     * 发布批次通知：给班级范围内所有学生发送通知
+     * 发布批次待办：给班级范围内所有学生创建待办任务
+     * 如果已存在待办（重新发布），会另外发送通知提醒学生
      */
-    void publishNotice(Long batchId);
+    void publishTask(Long batchId);
 }

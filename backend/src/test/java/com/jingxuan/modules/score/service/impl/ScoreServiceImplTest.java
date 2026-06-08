@@ -70,8 +70,6 @@ class ScoreServiceImplTest {
     @Mock private DeepSeekApiClient deepSeekApiClient;
     @Mock private HttpResponse<String> httpResponse;
 
-    @Captor private ArgumentCaptor<WorkScore> scoreCaptor;
-
     private ScoreServiceImpl scoreService;
 
     private static final Long TEACHER_ID = 200L;
@@ -141,11 +139,10 @@ class ScoreServiceImplTest {
             scoreService.submitScore(TEACHER_ID, request);
 
             // then
-            verify(workScoreMapper).insert(scoreCaptor.capture());
-            WorkScore captured = scoreCaptor.getValue();
-            assertEquals(WORK_ID, captured.getWorkId());
-            assertEquals(TEACHER_ID, captured.getTeacherId());
-            assertEquals(0, new BigDecimal("80").compareTo(captured.getTotal()));
+            verify(workScoreMapper).upsert(anyLong(), eq(WORK_ID), eq(TEACHER_ID), eq(1L),
+                    eq(new BigDecimal("20")), eq(new BigDecimal("20")),
+                    eq(new BigDecimal("25")), eq(new BigDecimal("15")),
+                    eq(new BigDecimal("80")), eq("做得好"));
             verify(logService).recordAction("提交评分", "作品", WORK_ID);
             verify(notificationService).sendNotification(eq(100L), anyString(), contains("80"), anyString(), eq(WORK_ID));
             verify(rankService).refreshRankCache(1L);
@@ -179,9 +176,10 @@ class ScoreServiceImplTest {
             scoreService.submitScore(TEACHER_ID, request);
 
             // then
-            verify(workScoreMapper, never()).insert(any(WorkScore.class));
-            verify(workScoreMapper).updateById(scoreCaptor.capture());
-            assertEquals(10L, scoreCaptor.getValue().getId());
+            verify(workScoreMapper).upsert(anyLong(), eq(WORK_ID), eq(TEACHER_ID), eq(1L),
+                    eq(new BigDecimal("20")), eq(new BigDecimal("20")),
+                    eq(new BigDecimal("25")), eq(new BigDecimal("15")),
+                    eq(new BigDecimal("80")), eq("做得好"));
         }
 
         @Test
@@ -269,7 +267,8 @@ class ScoreServiceImplTest {
 
             scoreService.submitScore(TEACHER_ID, createValidRequest());
 
-            verify(workScoreMapper).insert(any(WorkScore.class));
+            verify(workScoreMapper).upsert(anyLong(), anyLong(), anyLong(), any(),
+                    any(), any(), any(), any(), any(), any());
         }
 
         @Test

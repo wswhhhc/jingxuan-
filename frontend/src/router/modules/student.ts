@@ -32,6 +32,12 @@ const studentRoutes: RouteRecordRaw[] = [
         meta: { title: '提交作品' },
       },
       {
+        path: 'todos',
+        name: 'TodoList',
+        component: () => import('@/views/student/TodoList.vue'),
+        meta: { title: '我的待办' },
+      },
+      {
         path: 'works/edit/:id',
         name: 'WorkEdit',
         component: () => import('@/views/student/WorkSubmit.vue'),

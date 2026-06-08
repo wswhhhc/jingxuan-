@@ -19,6 +19,7 @@ import com.jingxuan.modules.audit.service.AuditService;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.publish.service.PublishService;
+import com.jingxuan.modules.task.service.StudentTaskService;
 import com.jingxuan.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class AuditServiceImpl implements AuditService {
     private final NotificationService notificationService;
     private final SysUserMapper sysUserMapper;
     private final LogService logService;
+    private final StudentTaskService studentTaskService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -97,6 +99,14 @@ public class AuditServiceImpl implements AuditService {
                 "audit",
                 work.getId()
         );
+
+        // 审核驳回时重置关联待办状态为"已驳回"
+        if (auditResult == 0 && work.getBatchId() != null) {
+            com.jingxuan.entity.StudentTask task = studentTaskService.getByUserAndBatch(work.getSubmitterId(), work.getBatchId());
+            if (task != null && task.getStatus() != 0) {
+                studentTaskService.rejectTask(work.getId());
+            }
+        }
 
         logService.recordAction(logAction, "作品", work.getId());
     }

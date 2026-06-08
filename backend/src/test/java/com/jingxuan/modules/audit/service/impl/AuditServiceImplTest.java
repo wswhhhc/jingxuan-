@@ -14,6 +14,7 @@ import com.jingxuan.modules.audit.dto.AuditRequest;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.publish.service.PublishService;
+import com.jingxuan.modules.task.service.StudentTaskService;
 import com.jingxuan.security.SecurityUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,7 @@ class AuditServiceImplTest {
     @Mock private NotificationService notificationService;
     @Mock private SysUserMapper sysUserMapper;
     @Mock private LogService logService;
+    @Mock private StudentTaskService studentTaskService;
 
     @Captor private ArgumentCaptor<Work> workCaptor;
     @Captor private ArgumentCaptor<WorkAudit> auditCaptor;
@@ -54,7 +56,7 @@ class AuditServiceImplTest {
     @BeforeEach
     void setUp() {
         auditService = new AuditServiceImpl(workMapper, workAuditMapper, workPublishMapper,
-                publishService, notificationService, sysUserMapper, logService);
+                publishService, notificationService, sysUserMapper, logService, studentTaskService);
         securityUtilsMock = mockStatic(SecurityUtils.class);
         securityUtilsMock.when(SecurityUtils::requireCurrentUserId).thenReturn(300L);
     }

@@ -23,6 +23,7 @@ import com.jingxuan.mapper.WorkMemberMapper;
 import com.jingxuan.mapper.WorkPublishMapper;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.score.service.ScoreService;
+import com.jingxuan.modules.task.service.StudentTaskService;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
 import com.jingxuan.modules.work.dto.WorkListVO;
 import com.jingxuan.modules.work.dto.WorkMemberDTO;
@@ -64,6 +65,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     private final WorkAttachmentBindingService workAttachmentBindingService;
     private final WorkMemberPolicyService workMemberPolicyService;
     private final WorkQueryValidator workQueryValidator;
+    private final StudentTaskService studentTaskService;
     @org.springframework.beans.factory.annotation.Autowired
     private ScoreService scoreService;
 
@@ -232,6 +234,14 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         work.setStatus(AuditStatusEnum.SUBMITTED.getValue());
         work.setSubmitTime(LocalDateTime.now());
         baseMapper.updateById(work);
+
+        // 提交审核后，关联的待办标记为已完成
+        if (work.getBatchId() != null) {
+            com.jingxuan.entity.StudentTask task = studentTaskService.getByUserAndBatch(work.getSubmitterId(), work.getBatchId());
+            if (task != null && task.getStatus() != 1) {
+                studentTaskService.completeTask(task.getId(), id);
+            }
+        }
 
         logService.recordAction("提交审核", "作品", id);
     }

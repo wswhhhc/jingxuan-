@@ -336,6 +336,8 @@
       </section>
     </div>
   </div>
+
+  <PreviewDialog ref="previewDialog" :url="previewUrl" />
 </template>
 
 <script setup lang="ts">
@@ -351,9 +353,12 @@ import type { WorkItem } from '@/api/student/work'
 import { IMAGE_TYPES, VIDEO_TYPES } from '@/api/types'
 import { getCachedUserInfo, hasLoginToken } from '@/utils/auth'
 import CommentThread from './CommentThread.vue'
+import PreviewDialog from '@/components/PreviewDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
+const previewDialog = ref<InstanceType<typeof PreviewDialog> | null>(null)
+const previewUrl = ref('')
 const work = ref<WorkItem | null>(null)
 const loading = ref(false)
 const infoExpanded = ref(false)
@@ -472,13 +477,8 @@ function getRouteWorkId() {
 
 function openPreview() {
   if (!work.value?.previewUrl) return
-  window.open(normalizePreviewUrl(work.value.previewUrl), '_blank')
-}
-
-function normalizePreviewUrl(value: string) {
-  const url = value.trim()
-  if (/^https?:\/\//i.test(url)) return url
-  return `http://${url}`
+  previewUrl.value = work.value.previewUrl
+  previewDialog.value?.open()
 }
 
 async function loadDetail() {

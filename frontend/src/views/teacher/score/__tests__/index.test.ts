@@ -85,7 +85,7 @@ describe('Teacher score view', () => {
     const wrapper = await mountView(ScorePage)
 
     expect(getBatchListMock).toHaveBeenCalled()
-    expect(getScoredWorkListMock).toHaveBeenCalledWith({ page: 1, size: 20, batchId: undefined, keyword: '', techStack: '', onlyUnscored: false })
+    expect(getScoredWorkListMock).toHaveBeenCalledWith({ page: 1, size: 5, batchId: undefined, keyword: '', techStack: '', onlyUnscored: false })
     expect(wrapper.text()).toContain('作品评分列表')
   })
 

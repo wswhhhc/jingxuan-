@@ -13,9 +13,9 @@
             <el-icon><HomeFilled /></el-icon>
             <span>首页</span>
           </el-menu-item>
-          <el-menu-item index="/student/works/create">
-            <el-icon><Plus /></el-icon>
-            <span>提交作品</span>
+          <el-menu-item index="/student/todos">
+            <el-icon><List /></el-icon>
+            <span>我的待办</span>
           </el-menu-item>
           <el-menu-item index="/student/works">
             <el-icon><Document /></el-icon>
@@ -83,7 +83,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/student/auth'
 import { getUnreadCount } from '@/api/notify'
 import { useNotificationPolling } from '@/composables/useNotificationPolling'
-import { ArrowDown, HomeFilled, Plus, Document, Trophy, Bell } from '@element-plus/icons-vue'
+import { ArrowDown, HomeFilled, List, Document, Trophy, Bell } from '@element-plus/icons-vue'
 import AppThemeToggle from '@/components/AppThemeToggle.vue'
 
 const route = useRoute()
@@ -98,7 +98,7 @@ const avatarFallback = computed(() => authStore.userInfo?.realName?.charAt(0) ||
 const pageTitle = computed(() => {
   const map: Record<string, string> = {
     '/student/home': '学生首页',
-    '/student/works/create': '提交作品',
+    '/student/todos': '我的待办',
     '/student/works': '我的作品',
     '/student/ranking': '我的评分',
     '/student/notify': '消息通知',
@@ -109,7 +109,7 @@ const pageTitle = computed(() => {
 const pageDescription = computed(() => {
   const map: Record<string, string> = {
     '/student/home': '用更清晰的节奏查看作品状态、提交进度与展示入口。',
-    '/student/works/create': '上传材料、整理摘要与技术栈，让作品更适合被呈现与评审。',
+    '/student/todos': '查看各评分批次的待办任务，选择一项去提交作品。',
     '/student/works': '统一管理草稿、审核中与已发布作品。',
     '/student/ranking': '查看作品评分反馈与当前表现。',
     '/student/notify': '集中查看审核结果、发布动态与评论回复提醒。',

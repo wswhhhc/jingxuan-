@@ -17,7 +17,7 @@
           <template #default="{ row }">{{ row.endTime?.replace('T', ' ') }}</template>
         </el-table-column>
         <el-table-column prop="classScopes" label="适用范围" width="180" show-overflow-tooltip />
-        <el-table-column label="通知" width="100">
+        <el-table-column label="待办" width="100">
           <template #default="{ row }">
             <el-tag v-if="row.noticeTitle" type="success" size="small">已配置</el-tag>
             <span v-else class="text-muted">-</span>
@@ -36,7 +36,7 @@
               <el-button size="small" @click="openWizard(row)">编辑</el-button>
               <el-button size="small" plain @click="viewDetail(row)">详情</el-button>
               <el-button size="small" type="primary" @click="viewScores(row)">评分明细</el-button>
-              <el-button size="small" @click="editNotice(row)">通知</el-button>
+              <el-button size="small" @click="editNotice(row)">待办</el-button>
               <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
             </div>
           </template>
@@ -53,7 +53,7 @@
       <el-steps :active="step" finish-status="success" align-center style="margin-bottom:28px">
         <el-step title="基本信息" />
         <el-step title="奖项配置" />
-        <el-step title="通知发布" />
+        <el-step title="待办要求" />
       </el-steps>
 
       <!-- Step 1: 基本信息 -->
@@ -150,17 +150,18 @@
         <div v-if="prizeRows.length === 0" class="step-prizes__empty">暂未配置奖项，可跳过此步骤</div>
       </div>
 
-      <!-- Step 3: 通知发布 -->
+      <!-- Step 3: 待办要求 -->
       <div v-show="step === 2" class="step-notice">
         <div class="step-notice__tip">
-          通知将发送至该批次班级范围内的所有学生（包括后续注册的学生）。
-          通知范围沿用第一步中设置的适用范围。
+          发布后将为该批次班级范围内的每位学生生成一条待办任务，
+          学生在待办列表中可查看到要求说明并提交作品。
+          待办范围沿用第一步中设置的适用范围。
         </div>
         <el-form label-width="100px">
-          <el-form-item label="通知标题">
-            <el-input v-model="noticeTitle" placeholder="如：2026春学期作品提交要求" />
+          <el-form-item label="待办标题">
+            <el-input v-model="noticeTitle" placeholder="如：2026春学期作品提交" />
           </el-form-item>
-          <el-form-item label="通知内容">
+          <el-form-item label="待办要求">
             <el-input
               v-model="noticeContent"
               type="textarea"
@@ -175,7 +176,7 @@
           </el-form-item>
         </el-form>
         <div class="step-notice__actions">
-          <el-checkbox v-model="publishAfterSave">保存后立即发布通知</el-checkbox>
+          <el-checkbox v-model="publishAfterSave">保存后立即发布待办</el-checkbox>
         </div>
       </div>
 
@@ -189,20 +190,20 @@
       </template>
     </el-dialog>
 
-    <!-- 通知编辑快捷弹窗（从列表行操作进入） -->
-    <el-dialog v-model="noticeVisible" title="编辑批次通知" width="600px" destroy-on-close>
+    <!-- 待办编辑快捷弹窗（从列表行操作进入） -->
+    <el-dialog v-model="noticeVisible" title="编辑待办要求" width="600px" destroy-on-close>
       <el-form label-width="100px">
-        <el-form-item label="通知标题">
-          <el-input v-model="noticeTitle" placeholder="如：2026春学期作品提交要求" />
+        <el-form-item label="待办标题">
+          <el-input v-model="noticeTitle" placeholder="如：2026春学期作品提交" />
         </el-form-item>
-        <el-form-item label="通知内容">
+        <el-form-item label="待办要求">
           <el-input v-model="noticeContent" type="textarea" :rows="10" placeholder="请填写作品要求、需上传的材料等说明…" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="noticeVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveNoticeOnly">保存通知</el-button>
-        <el-button type="success" @click="saveAndPublishNotice">保存并发布</el-button>
+        <el-button type="primary" @click="saveNoticeOnly">保存待办</el-button>
+        <el-button type="success" @click="saveAndPublishNotice">保存并发布待办</el-button>
       </template>
     </el-dialog>
 
@@ -214,7 +215,7 @@
           <div class="detail-item"><label>开始时间</label><span>{{ detail.startTime?.replace('T', ' ') }}</span></div>
           <div class="detail-item"><label>结束时间</label><span>{{ detail.endTime?.replace('T', ' ') }}</span></div>
           <div class="detail-item"><label>适用范围</label><span>{{ detail.classScopes || '-' }}</span></div>
-          <div class="detail-item"><label>通知标题</label><span>{{ detail.noticeTitle || '-' }}</span></div>
+          <div class="detail-item"><label>待办标题</label><span>{{ detail.noticeTitle || '-' }}</span></div>
           <div class="detail-item"><label>状态</label><span>
             <el-tag :type="detail.status === 1 ? 'success' : 'info'" size="small">
               {{ detail.status === 1 ? '启用' : '停用' }}
@@ -223,7 +224,7 @@
           <div class="detail-item"><label>创建时间</label><span>{{ detail.createTime?.replace('T', ' ') }}</span></div>
         </div>
         <div v-if="detail.noticeContent" class="detail-notice-content">
-          <label>通知内容</label>
+          <label>待办内容</label>
           <pre>{{ detail.noticeContent }}</pre>
         </div>
       </template>
@@ -335,12 +336,12 @@ function addPrizeRow() {
   prizeRows.value.push({ rewardLevel: '', rewardName: '', prizeName: '', quota: 1 })
 }
 
-// ===== 通知 =====
+// ===== 待办要求 =====
 const noticeTitle = ref('')
 const noticeContent = ref('')
 const publishAfterSave = ref(true)
 
-// 快捷通知编辑（从列表行进入）
+// 快捷待办编辑（从列表行进入）
 const noticeVisible = ref(false)
 const noticeBatchId = ref<number>(0)
 
@@ -405,7 +406,7 @@ function openWizard(row?: ScoreBatchItem) {
     form.classScopeIds = parsed.classScopeIds
     form.status = row.status
     form.timeRange = [row.startTime, row.endTime]
-    // 回填通知
+    // 回填待办要求
     if (row.noticeTitle) noticeTitle.value = row.noticeTitle
     if (row.noticeContent) noticeContent.value = row.noticeContent
   } else {
@@ -457,7 +458,7 @@ async function handleWizardSubmit() {
       }
     }
 
-    // 保存并可选发布通知
+    // 保存并可选发布待办
     if (noticeTitle.value && noticeContent.value) {
       await request.put(`/score-batch/${batchId}/notice`, {
         noticeTitle: noticeTitle.value,
@@ -465,7 +466,7 @@ async function handleWizardSubmit() {
       })
       if (publishAfterSave.value) {
         try {
-          await request.post(`/score-batch/${batchId}/publish-notice`)
+          await request.post(`/score-batch/${batchId}/publish-task`)
         } catch { /* may fail if no students yet */ }
       }
     }
@@ -476,7 +477,7 @@ async function handleWizardSubmit() {
   finally { submitting.value = false }
 }
 
-// ===== 通知快捷编辑 =====
+// ===== 待办快捷编辑 =====
 function editNotice(row: ScoreBatchItem) {
   noticeBatchId.value = row.id
   noticeTitle.value = row.noticeTitle || ''
@@ -490,7 +491,7 @@ async function saveNoticeOnly() {
       noticeTitle: noticeTitle.value,
       noticeContent: noticeContent.value
     })
-    ElMessage.success('通知已保存')
+    ElMessage.success('待办已保存')
     noticeVisible.value = false
     reload()
   } catch { /* handled */ }
@@ -502,8 +503,8 @@ async function saveAndPublishNotice() {
       noticeTitle: noticeTitle.value,
       noticeContent: noticeContent.value
     })
-    await request.post(`/score-batch/${noticeBatchId.value}/publish-notice`)
-    ElMessage.success('通知已保存并发布')
+    await request.post(`/score-batch/${noticeBatchId.value}/publish-task`)
+    ElMessage.success('待办已保存并发布')
     noticeVisible.value = false
     reload()
   } catch { /* handled */ }

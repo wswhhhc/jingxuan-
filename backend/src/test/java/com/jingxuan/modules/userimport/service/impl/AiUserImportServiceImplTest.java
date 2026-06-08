@@ -46,9 +46,11 @@ class AiUserImportServiceImplTest {
         aiUserImportService = new AiUserImportServiceImpl(deepSeekConfig, deepSeekApiClient, objectMapper, sysRoleMapper, sysDictMapper);
         // 默认 mock DeepSeek API 返回空响应（各测试按需覆盖）
         try {
-            java.net.http.HttpResponse<String> defaultResp = mockResponse(200,
-                "{\"choices\":[{\"message\":{\"content\":\"{\\\"assistantReply\\\":\\\"ok\\\",\\\"ready\\\":true,\\\"users\\\":[]}\"}}]}");
-            doReturn(defaultResp.body()).when(deepSeekApiClient).extractContent(anyString());
+            String defaultAiContent = "{\"assistantReply\":\"ok\",\"ready\":true,\"users\":[]}";
+            String defaultWrapper = "{\"choices\":[{\"message\":{\"content\":" +
+                    objectMapper.valueToTree(defaultAiContent).toString() + "}}]}";
+            java.net.http.HttpResponse<String> defaultResp = mockResponse(200, defaultWrapper);
+            doReturn(defaultAiContent).when(deepSeekApiClient).extractContent(anyString());
             when(deepSeekApiClient.post(any(java.util.Map.class)))
                     .thenReturn(defaultResp);
         } catch (Exception e) {
@@ -85,9 +87,18 @@ class AiUserImportServiceImplTest {
         return resp;
     }
 
+    @SuppressWarnings("unchecked")
     private void stubDeepSeekCall(HttpResponse<String> resp) {
-        try { doReturn(resp.body()).when(deepSeekApiClient).extractContent(anyString()); } catch (Exception e) { throw new RuntimeException(e); }
         try {
+            // 从包装 JSON 中提取内层 AI 内容，供 extractContent mock 返回
+            String body = resp.body();
+            String innerContent = "";
+            try {
+                innerContent = objectMapper.readTree(body).at("/choices/0/message/content").asText("");
+            } catch (Exception ignored) {
+                innerContent = body;
+            }
+            doReturn(innerContent).when(deepSeekApiClient).extractContent(anyString());
             when(deepSeekApiClient.post(any(java.util.Map.class)))
                     .thenReturn(resp);
         } catch (Exception e) {

@@ -3,8 +3,10 @@ package com.jingxuan.modules.adapter;
 import com.jingxuan.common.PageResult;
 import com.jingxuan.common.Result;
 import com.jingxuan.entity.ScoreBatch;
+import com.jingxuan.entity.StudentTask;
 import com.jingxuan.modules.score.dto.MyRankVO;
 import com.jingxuan.modules.scorebatch.service.ScoreBatchService;
+import com.jingxuan.modules.task.service.StudentTaskService;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
 import com.jingxuan.modules.work.dto.WorkListVO;
 import com.jingxuan.modules.work.dto.WorkQueryRequest;
@@ -32,6 +34,7 @@ public class StudentApiController {
     private final WorkService workService;
     private final StudentRankingFacade studentRankingFacade;
     private final ScoreBatchService scoreBatchService;
+    private final StudentTaskService studentTaskService;
 
     @Operation(summary = "创建作品")
     @PostMapping("/student/works")
@@ -96,5 +99,20 @@ public class StudentApiController {
     public Result<List<MyRankVO>> getMyRanks() {
         Long userId = SecurityUtils.requireCurrentUserId();
         return Result.ok(studentRankingFacade.getPublishedRanks(userId));
+    }
+
+    @Operation(summary = "获取我的待办列表")
+    @GetMapping("/student/tasks")
+    public Result<List<StudentTask>> getMyTasks() {
+        Long userId = SecurityUtils.requireCurrentUserId();
+        return Result.ok(studentTaskService.getStudentTasks(userId));
+    }
+
+    @Operation(summary = "提交作品后标记待办为已完成")
+    @PostMapping("/student/tasks/{taskId}/complete")
+    public Result<Void> completeTask(@PathVariable Long taskId,
+                                     @RequestParam Long workId) {
+        studentTaskService.completeTask(taskId, workId);
+        return Result.ok();
     }
 }

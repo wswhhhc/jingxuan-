@@ -10,6 +10,7 @@ import com.jingxuan.mapper.SysUserMapper;
 import com.jingxuan.mapper.WorkMapper;
 import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.rank.service.RankService;
+import com.jingxuan.modules.task.service.StudentTaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -40,6 +41,7 @@ class ScoreBatchServiceImplTest {
     @Mock private RankService rankService;
     @Mock private SysUserMapper sysUserMapper;
     @Mock private SysDictMapper sysDictMapper;
+    @Mock private StudentTaskService studentTaskService;
 
     @Captor private ArgumentCaptor<ScoreBatch> batchCaptor;
 
@@ -49,7 +51,7 @@ class ScoreBatchServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        scoreBatchService = new ScoreBatchServiceImpl(workMapper, notificationService, rankService, sysUserMapper, sysDictMapper);
+        scoreBatchService = new ScoreBatchServiceImpl(workMapper, notificationService, studentTaskService, rankService, sysUserMapper, sysDictMapper);
         ReflectionTestUtils.setField(scoreBatchService, "baseMapper", scoreBatchMapper);
     }
 

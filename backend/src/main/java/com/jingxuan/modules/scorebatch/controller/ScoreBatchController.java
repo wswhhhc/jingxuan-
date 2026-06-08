@@ -74,17 +74,27 @@ public class ScoreBatchController {
         return Result.ok(batch);
     }
 
-    @Operation(summary = "保存批次通知内容")
+    @Operation(summary = "保存批次待办要求内容")
     @PutMapping("/{id}/notice")
     public Result<Void> saveNotice(@PathVariable Long id, @RequestBody Map<String, String> body) {
         scoreBatchService.saveNotice(id, body.get("noticeTitle"), body.get("noticeContent"));
         return Result.ok();
     }
 
-    @Operation(summary = "发布批次通知（发送给班级范围内所有学生）")
+    @Operation(summary = "发布批次待办（给班级范围内所有学生创建待办任务）")
+    @PostMapping("/{id}/publish-task")
+    public Result<Void> publishTask(@PathVariable Long id) {
+        scoreBatchService.publishTask(id);
+        return Result.ok();
+    }
+
+    /**
+     * 兼容旧端点，底层逻辑已替换为发布待办
+     */
+    @Operation(summary = "发布批次通知（已迁移至待办，保留兼容）")
     @PostMapping("/{id}/publish-notice")
     public Result<Void> publishNotice(@PathVariable Long id) {
-        scoreBatchService.publishNotice(id);
+        scoreBatchService.publishTask(id);
         return Result.ok();
     }
 }
