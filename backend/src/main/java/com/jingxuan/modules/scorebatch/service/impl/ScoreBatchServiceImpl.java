@@ -108,6 +108,10 @@ public class ScoreBatchServiceImpl extends ServiceImpl<ScoreBatchMapper, ScoreBa
     @Transactional(rollbackFor = Exception.class)
     public void deleteBatch(Long id) {
         baseMapper.deleteById(id);
+        // 同时删除该批次关联的所有学生待办
+        studentTaskService.lambdaUpdate()
+                .eq(com.jingxuan.entity.StudentTask::getBatchId, id)
+                .remove();
     }
 
     @Override
