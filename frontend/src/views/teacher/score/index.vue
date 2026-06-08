@@ -390,7 +390,7 @@ interface ScoreForm {
 
 const query = reactive({
   page: 1,
-  size: 20,
+  size: 5,
   batchId: undefined as number | undefined,
   keyword: '',
   techStack: '',
