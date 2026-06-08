@@ -580,6 +580,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         WorkListVO vo = new WorkListVO();
         vo.setId(work.getId());
         vo.setTitle(work.getTitle());
+        vo.setSummary(work.getSummary());
         vo.setTechStack(work.getTechStack());
         vo.setCoverUrl(work.getCoverUrl());
         vo.setPreviewUrl(work.getPreviewUrl());

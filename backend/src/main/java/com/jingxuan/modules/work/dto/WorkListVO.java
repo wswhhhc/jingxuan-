@@ -18,6 +18,9 @@ public class WorkListVO {
     @Schema(description = "技术栈")
     private String techStack;
 
+    @Schema(description = "作品简介")
+    private String summary;
+
     @Schema(description = "封面图")
     private String coverUrl;
 
