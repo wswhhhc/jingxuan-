@@ -1,5 +1,7 @@
 # 菁选 (Jingxuan) — 校园作品展示平台
 
+[![CI](https://github.com/wswhhhc/jingxuan-/actions/workflows/ci.yml/badge.svg)](https://github.com/wswhhhc/jingxuan-/actions/workflows/ci.yml)
+
 基于 **Spring Boot 3.2.5 + Vue 3** 的全栈校园作品展示平台，支持学生提交作品、教师匿名评分、管理员审核发布、前台公开展示。集成 DeepSeek AI 内容安全审核、Redis 排行榜缓存、Docker 一键部署、GitHub Actions CI/CD 流水线。
 
 ---
@@ -27,7 +29,7 @@
 
 | 角色 | 功能 |
 |------|------|
-| 学生 | 提交作品、上传附件/视频、审核状态跟踪、查看评分与排行、消息通知 |
+| 学生 | 提交作品、上传附件/视频、**在线代码运行预览**、审核状态跟踪、查看评分与排行、消息通知 |
 | 教师 | 匿名评分（创新性25 + 技术难度25 + 完成度30 + 实用性20）、排行榜、评分历史 |
 | 管理员 | 审核发布、精选作品、评分批次、用户/角色/权限管理、奖品配置、数据字典、公告、评论管理、操作日志 |
 | 游客 | 浏览作品、筛选、作品详情、评论互动、点赞、排行榜 |
@@ -82,6 +84,27 @@ cd ../frontend
 npm install && npm run build
 ```
 
+### 本地开发
+
+```bash
+# 环境要求：JDK 17+ / MySQL 8.0+ / Redis 7+ / Node.js 20+
+
+# 1. 配置环境变量
+cp .env.example .env
+# 编辑 .env，填入 DB_PASSWORD
+
+# 2. 后端开发（终端 1）
+cd backend
+mvn compile                          # 编译
+# 在 IDE 中运行 Application.java，或：
+mvn spring-boot:run                  # 启动后端（端口 8080）
+
+# 3. 前端开发（终端 2）
+cd frontend
+npm install
+npm run dev                          # Vite HMR（端口 5173，自动代理 /api 到 8080）
+```
+
 ### 访问地址
 
 | 服务 | 地址 |
@@ -95,8 +118,9 @@ npm install && npm run build
 | 账号 | 密码 | 角色 | 姓名 |
 |------|------|------|------|
 | admin | admin123 | 管理员 | 系统管理员 |
-| t001 | 123456 | 教师 | 张教授 |
-| 2022001 | 123456 | 学生 | 张三 |
+| t001 | test123 | 教师 | 张教授 |
+| 2022001 | test123 | 学生 | 张三 |
+| teststu | test123 | 学生 | 测试学生 |
 
 ---
 
@@ -148,49 +172,34 @@ modules/
 
 ---
 
-## 项目结构
+## 项目结构（关键路径）
 
 ```
-/opt/jingxuan/
-├── backend/
-│   ├── src/main/java/com/jingxuan/     # 后端源码
-│   │   ├── auth/         # 认证（登录/注册/邮箱）
-│   │   ├── common/       # Result/PageResult/BaseEntity
-│   │   ├── config/       # 安全/Jackson/Knife4j/MyBatis-Plus/DeepSeek
-│   │   ├── controller/   # 用户/角色/菜单管理
-│   │   ├── dto/          # 共享 DTO
-│   │   ├── entity/       # 实体类（18+表）
-│   │   ├── enums/        # 枚举常量
-│   │   ├── exception/    # 全局异常处理 + 404 处理
-│   │   ├── mapper/       # MyBatis-Plus Mapper
-│   │   ├── modules/      # 业务模块 + Adapter 控制器
-│   │   │   └── adapter/  # AdminApi/TeacherApi/StudentApi/PublicApi
-│   │   ├── security/     # JWT 认证链 + 限流过滤器
-│   │   └── util/         # FileUtil/ClassScopeUtil/DeepSeekApiClient
+├── backend/                     # Spring Boot 后端
+│   ├── src/main/java/com/jingxuan/
+│   │   ├── common/              # Result/PageResult/BaseEntity
+│   │   ├── config/              # 安全/Jackson/Knife4j/MyBatis-Plus
+│   │   ├── modules/adapter/     # Adapter 控制器（4 角色 + 公共）
+│   │   ├── modules/             # 14 个业务模块（work/audit/score/rank…）
+│   │   ├── security/            # JWT 认证链 + 限流过滤器
+│   │   └── exception/           # 全局异常处理 + 404
 │   └── pom.xml
-├── frontend/
-│   ├── src/              # 前端源码（Vue 3 + TypeScript）
-│   │   ├── api/          # API 调用层（按角色分 admin/teacher/student/public）
-│   │   ├── components/   # 共享组件（NotificationList/PaginationBar/ThemeToggle）
-│   │   ├── composables/  # 组合式函数（useApiList/useCrudDialog/useNotificationPolling）
-│   │   ├── layout/       # 四端布局
-│   │   ├── router/       # 路由配置（按角色拆分）
-│   │   ├── stores/       # Pinia 状态（auth/theme）
-│   │   ├── utils/        # 工具函数
-│   │   └── views/        # 页面（admin/teacher/student/public）
+├── frontend/                    # Vue 3 + TypeScript SPA
+│   ├── src/
+│   │   ├── api/                 # API 调用层（按角色拆分）
+│   │   ├── views/               # 页面（admin 12页/teacher 4页/student 5页/public 4页）
+│   │   └── composables/         # useApiList / useCrudDialog / useNotificationPolling
 │   └── vite.config.ts
-├── sql/                   # SQL 迁移脚本
-│   ├── base/             # 基础表结构
-│   └── business/         # 业务表 + 9 个增量迁移
-├── scripts/
-│   └── smoke-test.sh     # 冒烟测试脚本
-├── .github/workflows/    # CI/CD 流水线
-├── docker-compose.yml    # Docker 一键部署
-├── Dockerfile            # 后端多阶段构建
-├── ecosystem.config.cjs  # PM2 进程配置
-├── nginx-jingxuan.conf   # Nginx 反向代理配置
-└── docs/                 # 项目文档（16 份）
+├── sql/                         # 数据库迁移脚本
+│   ├── base/init_schema.sql     # 基础表
+│   └── business/                # 业务表 + 增量迁移
+├── docs/                        # 16 份项目文档
+├── docker-compose.yml           # Docker 编排
+├── nginx-jingxuan.conf          # Nginx 反代配置
+└── ecosystem.config.cjs         # PM2 进程配置
 ```
+
+详细信息请参阅 [CLAUDE.md](CLAUDE.md)。
 
 ---
 
@@ -199,15 +208,13 @@ modules/
 | 测试类型 | 结果 | 覆盖 |
 |---------|------|------|
 | 前端单元测试 | 56/56 ✅ 100% | 组件逻辑、API 适配、路由 |
-| 后端单元测试 | 96/97 ✅ 99% | 14 个业务模块 Service 层 |
+| 后端单元测试 | 97/97 ✅ 100% | 14 个业务模块 Service 层 |
 | 集成测试 | 77/77 ✅ 100% | 10 个 Adapter 测试类 + 9 条 E2E |
 | 接口测试 | 109/109 ✅ 100% | 全部 API 端点 |
 | 手工测试 | 38/38 ✅ 100% | 四端功能全覆盖 |
 | 性能测试 | ~220 req/s | 100 并发 0 失败 |
 | 安全测试 | ✅ XSS / SQL 注入 / 越权 / 文件魔数 / DeepSeek 实测 |
 | 验收测试 | ✅ 41 项全部通过（张永琪/徐嘉豪/王耀） |
-
-详细报告请参阅 `docs/` 目录。
 
 ---
 
