@@ -10,6 +10,7 @@ import com.jingxuan.enums.AuditStatusEnum;
 import com.jingxuan.exception.BusinessException;
 import com.jingxuan.mapper.*;
 import com.jingxuan.modules.log.service.LogService;
+import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.task.service.StudentTaskService;
 import com.jingxuan.modules.sensitive.service.DeepSeekReviewService;
 import com.jingxuan.modules.task.service.StudentTaskService;
@@ -60,6 +61,7 @@ class WorkServiceImplTest {
     @Mock private WorkScoreMapper workScoreMapper;
     @Mock private WorkTagMapper workTagMapper;
     @Mock private RewardIssueMapper rewardIssueMapper;
+    @Mock private NotificationService notificationService;
 
     @Captor private ArgumentCaptor<Work> workCaptor;
 
@@ -80,8 +82,8 @@ class WorkServiceImplTest {
         workService = new WorkServiceImpl(sysUserMapper, workMemberService, workMemberMapper,
                 workAttachmentMapper, workPublishMapper, scoreBatchMapper, logService,
                 contentReviewService, attachmentBindingService, memberPolicyService, queryValidator,
-                studentTaskService, workAuditMapper, workCommentMapper, workLikeMapper,
-                workScoreMapper, workTagMapper, rewardIssueMapper);
+                studentTaskService, notificationService, workAuditMapper, workCommentMapper,
+                workLikeMapper, workScoreMapper, workTagMapper, rewardIssueMapper);
         // baseMapper（从 ServiceImpl 继承）
         ReflectionTestUtils.setField(workService, "baseMapper", workMapper);
 

@@ -34,6 +34,7 @@ import com.jingxuan.security.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -210,6 +211,35 @@ public class AdminApiController {
     @DeleteMapping("/admin/work/{workId}")
     public Result<Void> adminDeleteWork(@PathVariable Long workId) {
         workService.adminDeleteWork(workId);
+        return Result.ok();
+    }
+
+    // ==================== Delete Request ====================
+
+    @Autowired
+    private com.jingxuan.modules.deleterequest.service.DeleteRequestService deleteRequestService;
+
+    @Operation(summary = "获取删除申请列表")
+    @GetMapping("/admin/delete-requests")
+    public Result<PageResult<com.jingxuan.entity.DeleteRequest>> listDeleteRequests(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Integer status) {
+        return Result.ok(deleteRequestService.queryRequests(page, size, status));
+    }
+
+    @Operation(summary = "同意删除申请")
+    @PostMapping("/admin/delete-request/{id}/approve")
+    public Result<Void> approveDeleteRequest(@PathVariable Long id) {
+        deleteRequestService.approve(id, SecurityUtils.requireCurrentUserId());
+        return Result.ok();
+    }
+
+    @Operation(summary = "拒绝删除申请")
+    @PostMapping("/admin/delete-request/{id}/reject")
+    public Result<Void> rejectDeleteRequest(@PathVariable Long id,
+                                            @RequestBody Map<String, String> body) {
+        deleteRequestService.reject(id, SecurityUtils.requireCurrentUserId(), body.get("reply"));
         return Result.ok();
     }
 

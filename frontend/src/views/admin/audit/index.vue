@@ -49,14 +49,16 @@
     </section>
 
     <section class="table-panel reveal-up reveal-delay-2">
-      <div class="section-heading">
-        <div>
-          <h2 class="section-heading__title">审核列表</h2>
-          <p class="section-heading__meta">在列表中完成状态判断，在弹窗中查看完整信息与历史记录。</p>
-        </div>
-      </div>
+      <el-tabs v-model="activeTab" @tab-change="onTabChange">
+        <el-tab-pane label="审核列表" name="audit">
+          <div class="section-heading">
+            <div>
+              <h2 class="section-heading__title">审核列表</h2>
+              <p class="section-heading__meta">在列表中完成状态判断，在弹窗中查看完整信息与历史记录。</p>
+            </div>
+          </div>
 
-      <el-table :data="list" v-loading="loading">
+          <el-table :data="list" v-loading="loading">
         <el-table-column label="编号" width="78">
           <template #default="{ $index }">
             <span>{{ getRowIndex($index) }}</span>
@@ -107,9 +109,52 @@
         </el-table-column>
       </el-table>
 
-      <div class="pagination-wrap">
-        <PaginationBar v-model:page="query.page" v-model:size="query.size" :total="total" @change="reload" />
-      </div>
+          <div class="pagination-wrap">
+            <PaginationBar v-model:page="query.page" v-model:size="query.size" :total="total" @change="reload" />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="删除申请" name="delete-requests">
+          <div class="section-heading">
+            <div>
+              <h2 class="section-heading__title">删除申请</h2>
+              <p class="section-heading__meta">学生申请删除已通过的作品，需管理员审批后执行删除。</p>
+            </div>
+          </div>
+
+          <el-table :data="drList" v-loading="drLoading">
+            <el-table-column label="编号" width="60">
+              <template #default="{ $index }">{{ drPageStart + $index + 1 }}</template>
+            </el-table-column>
+            <el-table-column prop="workTitle" label="作品名称" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="studentName" label="申请人" width="110" />
+            <el-table-column prop="reason" label="申请原因" min-width="220" show-overflow-tooltip />
+            <el-table-column label="状态" width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 0 ? 'warning' : row.status === 1 ? 'success' : 'info'" size="small">
+                  {{ row.status === 0 ? '待处理' : row.status === 1 ? '已同意' : '已拒绝' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createTime" label="申请时间" width="170">
+              <template #default="{ row }">{{ row.createTime?.replace('T', ' ') }}</template>
+            </el-table-column>
+            <el-table-column label="操作" width="200" fixed="right">
+              <template #default="{ row }">
+                <template v-if="row.status === 0">
+                  <el-button size="small" type="success" @click="handleApproveDelete(row)">同意</el-button>
+                  <el-button size="small" type="danger" @click="handleOpenRejectDelete(row)">拒绝</el-button>
+                </template>
+                <span v-else class="text-muted">{{ row.adminReply || '-' }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pagination-wrap">
+            <PaginationBar v-model:page="drPage" v-model:size="drPageSize" :total="drTotal" @change="loadDeleteRequests" />
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </section>
 
     <el-dialog v-model="detailVisible" title="作品详情" width="760px" destroy-on-close>
@@ -198,11 +243,28 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 拒绝删除申请弹窗 -->
+    <el-dialog v-model="drRejectVisible" title="拒绝删除申请" width="460px">
+      <p style="margin-bottom:12px;color:var(--text-secondary)">作品：{{ drCurrentItem?.workTitle }}</p>
+      <el-input
+        v-model="drRejectReply"
+        type="textarea"
+        :rows="4"
+        placeholder="请填写拒绝原因"
+        maxlength="500"
+        show-word-limit
+      />
+      <template #footer>
+        <el-button @click="drRejectVisible = false">取消</el-button>
+        <el-button type="danger" :loading="drSubmitting" @click="handleRejectDelete">确认拒绝</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
 import { getAuditList, doAudit, getAuditDetail, getAuditHistory, publishWork, offlineWork, setFeatured } from '@/api/admin/audit'
@@ -381,6 +443,79 @@ async function handleAdminDelete(workId: number) {
     detailVisible.value = false
     reload()
   } catch { /* cancelled or failed */ }
+}
+
+// ===== 删除申请管理 =====
+const activeTab = ref('audit')
+const drLoading = ref(false)
+const drList = ref<any[]>([])
+const drTotal = ref(0)
+const drPage = ref(1)
+const drPageSize = ref(10)
+const drCurrentItem = ref<any>(null)
+const drRejectVisible = ref(false)
+const drRejectReply = ref('')
+const drSubmitting = ref(false)
+
+const drPageStart = computed(() => (drPage.value - 1) * drPageSize.value)
+
+function onTabChange(name: string) {
+  if (name === 'delete-requests') {
+    loadDeleteRequests()
+  }
+}
+
+async function loadDeleteRequests() {
+  drLoading.value = true
+  try {
+    const res = await request.get('/admin/delete-requests', {
+      params: { page: drPage.value, size: drPageSize.value, status: 0 }
+    })
+    drList.value = res.data?.records || []
+    drTotal.value = res.data?.total || 0
+  } catch {
+    drList.value = []
+  } finally {
+    drLoading.value = false
+  }
+}
+
+async function handleApproveDelete(row: any) {
+  try {
+    await ElMessageBox.confirm(`确认同意删除作品《${row.workTitle}》？此操作不可恢复！`, '确认同意', {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消',
+    })
+    await request.post(`/admin/delete-request/${row.id}/approve`)
+    ElMessage.success('已同意删除申请，作品已删除')
+    loadDeleteRequests()
+  } catch { /* cancelled or failed */ }
+}
+
+function handleOpenRejectDelete(row: any) {
+  drCurrentItem.value = row
+  drRejectReply.value = ''
+  drRejectVisible.value = true
+}
+
+async function handleRejectDelete() {
+  if (!drCurrentItem.value) return
+  if (!drRejectReply.value.trim()) {
+    ElMessage.warning('请填写拒绝原因')
+    return
+  }
+  drSubmitting.value = true
+  try {
+    await request.post(`/admin/delete-request/${drCurrentItem.value.id}/reject`, {
+      reply: drRejectReply.value
+    })
+    ElMessage.success('已拒绝删除申请')
+    drRejectVisible.value = false
+    loadDeleteRequests()
+  } finally {
+    drSubmitting.value = false
+  }
 }
 
 onMounted(() => {

@@ -30,6 +30,7 @@ import com.jingxuan.mapper.WorkPublishMapper;
 import com.jingxuan.mapper.WorkScoreMapper;
 import com.jingxuan.mapper.WorkTagMapper;
 import com.jingxuan.modules.log.service.LogService;
+import com.jingxuan.modules.notification.service.NotificationService;
 import com.jingxuan.modules.score.service.ScoreService;
 import com.jingxuan.modules.task.service.StudentTaskService;
 import com.jingxuan.modules.work.dto.WorkDetailVO;
@@ -74,6 +75,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     private final WorkMemberPolicyService workMemberPolicyService;
     private final WorkQueryValidator workQueryValidator;
     private final StudentTaskService studentTaskService;
+    private final NotificationService notificationService;
     private final WorkAuditMapper workAuditMapper;
     private final WorkCommentMapper workCommentMapper;
     private final WorkLikeMapper workLikeMapper;
@@ -312,6 +314,19 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
             if (task != null) {
                 studentTaskService.rejectTask(workId);
             }
+        }
+
+        // 通知作者
+        try {
+            notificationService.sendNotification(
+                    work.getSubmitterId(),
+                    "作品已被删除",
+                    "您的作品《" + work.getTitle() + "》已被管理员删除",
+                    "work_deleted",
+                    workId
+            );
+        } catch (Exception e) {
+            log.warn("发送删除通知失败", e);
         }
 
         // 逻辑删除作品本身

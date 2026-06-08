@@ -4,6 +4,7 @@ import com.jingxuan.common.PageResult;
 import com.jingxuan.common.Result;
 import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.StudentTask;
+import com.jingxuan.modules.deleterequest.service.DeleteRequestService;
 import com.jingxuan.modules.score.dto.MyRankVO;
 import com.jingxuan.modules.scorebatch.service.ScoreBatchService;
 import com.jingxuan.modules.task.service.StudentTaskService;
@@ -21,6 +22,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 学生端 API 适配 — 桥接前端期望的学生端路径与后端实际接口
@@ -35,6 +37,7 @@ public class StudentApiController {
     private final StudentRankingFacade studentRankingFacade;
     private final ScoreBatchService scoreBatchService;
     private final StudentTaskService studentTaskService;
+    private final DeleteRequestService deleteRequestService;
 
     @Operation(summary = "创建作品")
     @PostMapping("/student/works")
@@ -114,5 +117,18 @@ public class StudentApiController {
                                      @RequestParam Long workId) {
         studentTaskService.completeTask(taskId, workId);
         return Result.ok();
+    }
+
+    @Operation(summary = "申请删除已审核通过的作品")
+    @PostMapping("/student/work/{workId}/delete-request")
+    public Result<Long> submitDeleteRequest(@PathVariable Long workId,
+                                            @RequestBody Map<String, String> body) {
+        Long userId = SecurityUtils.requireCurrentUserId();
+        String reason = body.get("reason");
+        if (reason == null || reason.isBlank()) {
+            return Result.fail("请填写申请原因");
+        }
+        Long id = deleteRequestService.submitRequest(workId, userId, reason);
+        return Result.ok(id);
     }
 }

@@ -92,6 +92,14 @@
                 <el-button v-if="canManage(item) && item.status === 'submitted'" type="info" link disabled>
                   审核中
                 </el-button>
+                <el-button
+                  v-if="canManage(item) && item.status === 'approved'"
+                  type="warning"
+                  link
+                  @click="openDeleteRequest(item)"
+                >
+                  申请删除
+                </el-button>
                 <el-popconfirm
                   v-if="canManage(item) && (item.status === 'draft' || item.status === 'rejected')"
                   title="确定删除该作品？"
@@ -126,6 +134,27 @@
     <el-drawer v-model="drawerVisible" title="驳回原因" size="400px">
       <p>{{ rejectReason }}</p>
     </el-drawer>
+
+    <!-- 申请删除作品弹窗 -->
+    <el-dialog v-model="deleteRequestVisible" title="申请删除作品" width="480px" destroy-on-close>
+      <p style="margin-bottom:12px;font-size:14px;color:var(--text-secondary)">
+        作品《{{ deleteRequestWork?.title }}》将被标记为删除申请，管理员审批后才会执行删除。
+      </p>
+      <el-input
+        v-model="deleteRequestReason"
+        type="textarea"
+        :rows="4"
+        placeholder="请说明申请删除的原因"
+        maxlength="500"
+        show-word-limit
+      />
+      <template #footer>
+        <el-button @click="deleteRequestVisible = false">取消</el-button>
+        <el-button type="danger" :loading="deleteRequestSubmitting" @click="handleSubmitDeleteRequest">
+          提交申请
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -151,6 +180,36 @@ const reload = () => loadList({ page: page.value, pageSize: pageSize.value, stat
 
 const drawerVisible = ref(false)
 const rejectReason = ref('')
+
+const deleteRequestVisible = ref(false)
+const deleteRequestSubmitting = ref(false)
+const deleteRequestWork = ref<WorkItem | null>(null)
+const deleteRequestReason = ref('')
+
+function openDeleteRequest(item: WorkItem) {
+  deleteRequestWork.value = item
+  deleteRequestReason.value = ''
+  deleteRequestVisible.value = true
+}
+
+async function handleSubmitDeleteRequest() {
+  if (!deleteRequestReason.value.trim()) {
+    ElMessage.warning('请填写申请原因')
+    return
+  }
+  if (!deleteRequestWork.value) return
+  deleteRequestSubmitting.value = true
+  try {
+    const { submitDeleteRequest } = await import('@/api/student/deleteRequest')
+    await submitDeleteRequest(deleteRequestWork.value.id, deleteRequestReason.value)
+    ElMessage.success('删除申请已提交，等待管理员审批')
+    deleteRequestVisible.value = false
+  } catch {
+    // handled by interceptor
+  } finally {
+    deleteRequestSubmitting.value = false
+  }
+}
 
 const statusStats = computed(() => ({
   draft: list.value.filter(item => item.status === 'draft').length,
