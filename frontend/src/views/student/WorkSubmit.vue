@@ -380,7 +380,7 @@ async function beforeFileUpload(file: File): Promise<boolean> {
   if (file.size > maxSize) {
     const message = ext === 'mp4' ? '视频文件不能超过1.5GB'
       : ['jpg', 'png', 'gif'].includes(ext) ? '图片文件不能超过10MB'
-      : '源代码压缩包文件不能超过500MB'
+      : '压缩包文件不能超过200MB'
     ElMessage.error(message)
     return false
   }

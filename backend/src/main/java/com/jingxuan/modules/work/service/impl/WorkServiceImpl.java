@@ -518,11 +518,7 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         List<WorkAttachment> attachments = workAttachmentMapper.selectList(
                 Wrappers.<WorkAttachment>lambdaQuery()
                         .eq(WorkAttachment::getWorkId, workId));
-        boolean hasSourceArchive = attachments.stream().anyMatch(attachment -> isSourceArchive(attachment.getFileType()));
         boolean hasVideo = attachments.stream().anyMatch(attachment -> "mp4".equals(normalizeFileType(attachment.getFileType())));
-        if (!hasSourceArchive) {
-            throw new BusinessException("提交审核前请上传源代码压缩包");
-        }
         if (!hasVideo) {
             throw new BusinessException("提交审核前请上传演示视频文件");
         }
