@@ -206,6 +206,13 @@ public class AdminApiController {
         return Result.ok();
     }
 
+    @Operation(summary = "管理员删除作品（不限制状态，清理所有关联数据）")
+    @DeleteMapping("/admin/work/{workId}")
+    public Result<Void> adminDeleteWork(@PathVariable Long workId) {
+        workService.adminDeleteWork(workId);
+        return Result.ok();
+    }
+
     // ==================== Notice ====================
 
     @GetMapping("/admin/notice/list")

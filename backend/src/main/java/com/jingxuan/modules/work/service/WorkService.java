@@ -30,6 +30,11 @@ public interface WorkService extends IService<Work> {
     void deleteWork(Long id);
 
     /**
+     * 管理员删除作品（不限制状态，清理所有关联数据）
+     */
+    void adminDeleteWork(Long workId);
+
+    /**
      * 分页查询作品列表
      */
     PageResult<WorkListVO> queryWorkList(WorkQueryRequest request);

@@ -7,20 +7,28 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.jingxuan.common.PageResult;
+import com.jingxuan.entity.RewardIssue;
 import com.jingxuan.entity.ScoreBatch;
 import com.jingxuan.entity.SysUser;
 import com.jingxuan.entity.Work;
 import com.jingxuan.entity.WorkAttachment;
 import com.jingxuan.entity.WorkMember;
 import com.jingxuan.entity.WorkPublish;
+import com.jingxuan.entity.WorkTag;
 import com.jingxuan.enums.AuditStatusEnum;
 import com.jingxuan.exception.BusinessException;
+import com.jingxuan.mapper.RewardIssueMapper;
 import com.jingxuan.mapper.ScoreBatchMapper;
 import com.jingxuan.mapper.SysUserMapper;
 import com.jingxuan.mapper.WorkAttachmentMapper;
+import com.jingxuan.mapper.WorkAuditMapper;
+import com.jingxuan.mapper.WorkCommentMapper;
+import com.jingxuan.mapper.WorkLikeMapper;
 import com.jingxuan.mapper.WorkMapper;
 import com.jingxuan.mapper.WorkMemberMapper;
 import com.jingxuan.mapper.WorkPublishMapper;
+import com.jingxuan.mapper.WorkScoreMapper;
+import com.jingxuan.mapper.WorkTagMapper;
 import com.jingxuan.modules.log.service.LogService;
 import com.jingxuan.modules.score.service.ScoreService;
 import com.jingxuan.modules.task.service.StudentTaskService;
@@ -66,6 +74,12 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
     private final WorkMemberPolicyService workMemberPolicyService;
     private final WorkQueryValidator workQueryValidator;
     private final StudentTaskService studentTaskService;
+    private final WorkAuditMapper workAuditMapper;
+    private final WorkCommentMapper workCommentMapper;
+    private final WorkLikeMapper workLikeMapper;
+    private final WorkScoreMapper workScoreMapper;
+    private final WorkTagMapper workTagMapper;
+    private final RewardIssueMapper rewardIssueMapper;
     @org.springframework.beans.factory.annotation.Autowired
     private ScoreService scoreService;
 
@@ -264,6 +278,46 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
 
         // 逻辑删除（基于 BaseEntity @TableLogic 注解）
         baseMapper.deleteById(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void adminDeleteWork(Long workId) {
+        Work work = baseMapper.selectById(workId);
+        if (work == null) {
+            throw new BusinessException("作品不存在");
+        }
+
+        // 清理所有关联数据
+        workAttachmentMapper.delete(Wrappers.<WorkAttachment>lambdaQuery().eq(WorkAttachment::getWorkId, workId));
+        workAuditMapper.delete(Wrappers.<com.jingxuan.entity.WorkAudit>lambdaQuery()
+                .eq(com.jingxuan.entity.WorkAudit::getWorkId, workId));
+        workCommentMapper.delete(Wrappers.<com.jingxuan.entity.WorkComment>lambdaQuery()
+                .eq(com.jingxuan.entity.WorkComment::getWorkId, workId));
+        workLikeMapper.delete(Wrappers.<com.jingxuan.entity.WorkLike>lambdaQuery()
+                .eq(com.jingxuan.entity.WorkLike::getWorkId, workId));
+        workMemberMapper.delete(Wrappers.<WorkMember>lambdaQuery().eq(WorkMember::getWorkId, workId));
+        workPublishMapper.delete(Wrappers.<WorkPublish>lambdaQuery().eq(WorkPublish::getWorkId, workId));
+        workScoreMapper.delete(Wrappers.<com.jingxuan.entity.WorkScore>lambdaQuery()
+                .eq(com.jingxuan.entity.WorkScore::getWorkId, workId));
+        workTagMapper.delete(Wrappers.<com.jingxuan.entity.WorkTag>lambdaQuery()
+                .eq(com.jingxuan.entity.WorkTag::getWorkId, workId));
+        rewardIssueMapper.delete(Wrappers.<com.jingxuan.entity.RewardIssue>lambdaQuery()
+                .eq(com.jingxuan.entity.RewardIssue::getWorkId, workId));
+
+        // 重置关联的学生待办
+        if (work.getBatchId() != null) {
+            com.jingxuan.entity.StudentTask task = studentTaskService
+                    .getByUserAndBatch(work.getSubmitterId(), work.getBatchId());
+            if (task != null) {
+                studentTaskService.rejectTask(workId);
+            }
+        }
+
+        // 逻辑删除作品本身
+        baseMapper.deleteById(workId);
+
+        logService.recordAction("管理员删除作品", "作品", workId);
     }
 
     @Override

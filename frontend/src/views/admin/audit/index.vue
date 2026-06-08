@@ -152,6 +152,9 @@
           </el-button>
           <el-button @click="handleOffline(detail!.id)">下线</el-button>
         </div>
+        <div v-if="detail" class="dialog-actions" style="margin-top:8px;border-top:1px solid var(--border-subtle,#e4e7ed);padding-top:8px">
+          <el-button type="danger" size="small" plain @click="handleAdminDelete(detail!.id)">删除作品</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -364,6 +367,20 @@ const handleFeaturedSubmit = async () => {
     console.error('设置精选失败:', e)
     ElMessage.error('操作失败，请重试')
   }
+}
+
+async function handleAdminDelete(workId: number) {
+  try {
+    await ElMessageBox.confirm('确认删除该作品？此操作将同时删除关联的附件、评分、评论等所有数据，不可恢复！', '危险操作', {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消',
+    })
+    await request.delete(`/admin/work/${workId}`)
+    ElMessage.success('作品已删除')
+    detailVisible.value = false
+    reload()
+  } catch { /* cancelled or failed */ }
 }
 
 onMounted(() => {
