@@ -613,6 +613,13 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         dto.setStudentNo(member.getStudentNo());
         dto.setClassName(member.getClassName());
         dto.setIsLeader(member.getIsLeader());
+        // 补充用户头像
+        if (member.getStudentId() != null) {
+            SysUser user = sysUserMapper.selectById(member.getStudentId());
+            if (user != null) {
+                dto.setAvatar(user.getAvatar());
+            }
+        }
         return dto;
     }
 }

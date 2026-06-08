@@ -113,7 +113,7 @@
           <div class="work-card__body">
             <div class="work-card__topline">
               <span>{{ item.submitTime?.split(' ')[0] || '未标注日期' }}</span>
-              <span>{{ item.submitterName || '匿名作者' }}</span>
+              <span>{{ item.submitterName || '团队作品' }}</span>
             </div>
             <h3 class="work-card__title">{{ item.title }}</h3>
             <p class="work-card__summary">{{ item.summary ? item.summary.length > 100 ? item.summary.slice(0, 100) + '...' : item.summary : '暂无作品简介。' }}</p>

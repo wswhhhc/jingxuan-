@@ -28,4 +28,7 @@ public class WorkMemberDTO {
 
     @Schema(description = "是否队长 0=否 1=是")
     private Integer isLeader;
+
+    @Schema(description = "用户头像URL（来自 SysUser）")
+    private String avatar;
 }

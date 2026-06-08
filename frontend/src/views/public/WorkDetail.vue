@@ -93,7 +93,7 @@
           </div>
           <div v-if="work.members?.length" class="member-list">
             <div v-for="m in work.members" :key="m.id || m.studentNo" class="member-item">
-              <el-avatar :size="36">{{ m.studentName.charAt(0) }}</el-avatar>
+              <el-avatar :size="36" :src="m.avatar">{{ m.avatar ? '' : m.studentName.charAt(0) }}</el-avatar>
               <div class="member-info">
                 <div class="member-name">
                   <span>{{ m.studentName }}</span>
