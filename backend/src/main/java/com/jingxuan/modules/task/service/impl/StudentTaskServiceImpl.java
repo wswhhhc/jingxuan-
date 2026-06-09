@@ -111,6 +111,21 @@ public class StudentTaskServiceImpl extends ServiceImpl<StudentTaskMapper, Stude
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void resetTask(Long workId) {
+        StudentTask task = lambdaQuery()
+                .eq(StudentTask::getWorkId, workId)
+                .eq(StudentTask::getDeleted, 0)
+                .one();
+        if (task != null) {
+            task.setStatus(0);
+            task.setWorkId(null);
+            baseMapper.updateById(task);
+            log.info("待办已重置: taskId={}, workId={}", task.getId(), workId);
+        }
+    }
+
+    @Override
     public StudentTask getByUserAndBatch(Long userId, Long batchId) {
         return lambdaQuery()
                 .eq(StudentTask::getUserId, userId)

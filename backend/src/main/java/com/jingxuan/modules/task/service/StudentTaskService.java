@@ -29,6 +29,11 @@ public interface StudentTaskService extends IService<StudentTask> {
     void rejectTask(Long workId);
 
     /**
+     * 管理员删除作品后重置待办（已完成/已驳回→待处理，清空 workId）
+     */
+    void resetTask(Long workId);
+
+    /**
      * 根据 batchId + userId 获取待办
      */
     StudentTask getByUserAndBatch(Long userId, Long batchId);
