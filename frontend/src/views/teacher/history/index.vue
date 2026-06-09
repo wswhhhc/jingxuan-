@@ -21,7 +21,11 @@
       </div>
 
       <el-table :data="list" v-loading="loading" stripe>
-        <el-table-column prop="workId" label="作品 ID" width="120" />
+        <el-table-column label="#" width="72">
+          <template #default="{ $index }">
+            {{ (query.page - 1) * query.size + $index + 1 }}
+          </template>
+        </el-table-column>
         <el-table-column prop="workTitle" label="作品名" min-width="220" show-overflow-tooltip />
         <el-table-column prop="innovation" label="创新性" width="90" />
         <el-table-column prop="difficulty" label="技术难度" width="110" />
