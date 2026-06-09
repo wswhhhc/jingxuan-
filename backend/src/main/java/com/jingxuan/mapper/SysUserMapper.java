@@ -2,6 +2,7 @@ package com.jingxuan.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.jingxuan.entity.SysUser;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -38,4 +39,10 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
 
     @Select("SELECT COUNT(1) FROM sys_user WHERE email = #{email} AND deleted = 0")
     int countByEmail(@Param("email") String email);
+
+    /**
+     * 物理删除用户（不触发 @TableLogic 逻辑删除）
+     */
+    @Delete("DELETE FROM sys_user WHERE id = #{id}")
+    int physicalDeleteById(@Param("id") Long id);
 }

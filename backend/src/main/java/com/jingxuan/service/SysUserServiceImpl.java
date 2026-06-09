@@ -82,7 +82,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             throw new BusinessException("用户不存在");
         }
         ensureMutableUser(user);
-        // 逻辑删除（基于 BaseEntity @TableLogic 注解）
-        return removeById(userId);
+        // 物理删除（不再保留软删除记录，释放邮箱和用户名供重新注册）
+        return sysUserMapper.physicalDeleteById(userId) > 0;
     }
 }
