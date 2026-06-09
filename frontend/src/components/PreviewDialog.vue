@@ -45,13 +45,18 @@
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         @load="onIframeLoad"
       ></iframe>
+
+      <div class="preview-login-hint">
+        <el-icon><WarningFilled /></el-icon>
+        <span>若项目有登录功能，弹窗内可能登录异常，建议使用「新标签页」打开</span>
+      </div>
     </div>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { Link, FullScreen, Close, Loading } from '@element-plus/icons-vue'
+import { Link, FullScreen, Close, Loading, WarningFilled } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   url: string
@@ -145,6 +150,22 @@ defineExpose({ open, close })
 .preview-dialog--fullscreen .el-dialog__header {
   padding-top: 10px !important;
   padding-bottom: 10px !important;
+}
+.preview-login-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #e6f7ff;
+  border-top: 1px solid #91d5ff;
+  font-size: 12px;
+  color: #0050b3;
+  z-index: 11;
 }
 </style>
 
