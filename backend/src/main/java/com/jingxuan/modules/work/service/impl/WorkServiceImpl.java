@@ -307,12 +307,15 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         rewardIssueMapper.delete(Wrappers.<com.jingxuan.entity.RewardIssue>lambdaQuery()
                 .eq(com.jingxuan.entity.RewardIssue::getWorkId, workId));
 
-        // 重置关联的学生待办（待处理状态，可重新提交）
+        // 重置关联的学生待办为待处理（可重新提交）
         if (work.getBatchId() != null) {
-            com.jingxuan.entity.StudentTask task = studentTaskService
+            com.jingxuan.entity.StudentTask taskRef = studentTaskService
                     .getByUserAndBatch(work.getSubmitterId(), work.getBatchId());
-            if (task != null) {
-                studentTaskService.resetTask(workId);
+            if (taskRef != null) {
+                taskRef.setStatus(0);
+                taskRef.setWorkId(null);
+                studentTaskService.updateById(taskRef);
+                log.info("待办已重置为待处理: taskId={}, batchId={}", taskRef.getId(), work.getBatchId());
             }
         }
 
