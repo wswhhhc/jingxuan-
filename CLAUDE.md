@@ -38,12 +38,12 @@ npx vue-tsc --noEmit                # TypeScript 类型检查
 # 后端（需在 backend/ 目录下）
 mvn compile                           # 编译
 mvn test                              # 全部测试（含集成测试，需 MySQL+Redis）
-mvn test -Dtest=WorkServiceImplTest   # 单个测试类
+mvn test -Dtest="WorkServiceImplTest" # 单个测试类
 mvn test -Dtest="AdminApiTest,FileUploadTest"  # 多个测试类
 mvn test -Dtest="com.jingxuan.modules.work.**" # 按包运行
 mvn test -DfailIfNoTests=false        # 无测试不报错
 mvn compile -q                        # 编译检查
-mvn package -Dmaven.test.skip=true    # 打包 JAR → target/jingxuan-backend-1.0.0.jar
+mvn package -Dmaven.test.skip=true    # 打包 JAR
 
 # 部署
 cd /opt/jingxuan/backend
@@ -52,14 +52,15 @@ cp target/jingxuan-backend-1.0.0.jar .
 pm2 restart jingxuan-back
 
 # PM2 管理
-pm2 start ecosystem.config.cjs        # 启动后端（见 PM2 配置）
 pm2 restart jingxuan-back             # 重启
-pm2 stop jingxuan-back                # 停止
 pm2 logs jingxuan-back                # 查看日志
 pm2 status                            # 查看进程状态
 
 # 冒烟测试
 bash scripts/smoke-test.sh http://localhost:8080
+
+# 静态资源缓存刷新
+nginx -s reload
 ```
 
 ### Docker
@@ -77,6 +78,8 @@ docker compose up -d --build backend  # 重新构建并启动后端
 git push  # 自动触发 GitHub Actions：编译 → 单元测试 → 打包（.github/workflows/ci.yml）
 ```
 
+注意：CI 只跑后端单元测试（不含集成测试），需要 MySQL+Redis 的测试在本地运行。
+
 ## 环境变量
 
 | 变量 | 说明 | 默认值 |
@@ -84,7 +87,6 @@ git push  # 自动触发 GitHub Actions：编译 → 单元测试 → 打包（.
 | `DB_PASSWORD` | MySQL 数据库密码 | `jingxuan123` |
 | `DEEPSEEK_API_KEY` | DeepSeek API 密钥（留空 dev 环境 bypass） | — |
 | `MAIL_HOST` | 邮件服务器地址 | `smtp.qq.com` |
-| `MAIL_PORT` | 邮件服务器端口 | `587` |
 | `MAIL_USERNAME` | 邮箱用户名 | — |
 | `MAIL_PASSWORD` | 邮箱密码/授权码 | — |
 | `MAIL_FROM` | 发件人地址 | — |
@@ -95,16 +97,16 @@ git push  # 自动触发 GitHub Actions：编译 → 单元测试 → 打包（.
 
 | 文件 | 用途 |
 |------|------|
-| `backend/src/main/resources/application.yml` | 主配置（数据源、JWT、Redis、上传路径） |
+| `backend/src/main/resources/application.yml` | 主配置（数据源、JWT、Redis、上传路径、DeepSeek） |
 | `application-dev.yml` | 开发环境（DeepSeek bypass） |
 | `application-test.yml` | 测试环境（独立数据库 jingxuan_test） |
 | `application-prod.yml` | 生产环境（DeepSeek reject） |
 | `frontend/vite.config.ts` | Vite 构建 + 开发代理配置 |
-| `nginx-jingxuan.conf` | Nginx 反代配置（路由、安全头、Gzip） |
+| `nginx-jingxuan.conf` | Nginx 反代配置（安全头、Gzip、缓存策略） |
 | `ecosystem.config.cjs` | PM2 进程配置（JVM 参数） |
 | `docker-compose.yml` | Docker 编排 |
 | `.env` | 敏感配置（**不提交 Git**） |
-| `sql/` | 数据库迁移脚本 |
+| `sql/` | 数据库迁移脚本（按日期命名） |
 
 ## 架构概览
 
@@ -130,16 +132,14 @@ git push  # 自动触发 GitHub Actions：编译 → 单元测试 → 打包（.
 
 | 控制器 | 路径 | 角色 |
 |--------|------|------|
-| `AdminApiController` | `/admin/*` | 管理员（48 端点） |
-| `TeacherApiController` | `/teacher/*` | 教师（14 端点） |
-| `StudentApiController` | `/student/*` | 学生（14 端点） |
-| `PublicApiController` | `/public/*` | 游客（16 端点） |
-| `AuthController` | `/auth/*` | 认证（9 端点） |
-| `NotificationController` | `/{role}/notify/*` | 三端通知 |
+| `AdminApiController` | `/admin/*` | 管理员 |
+| `TeacherApiController` | `/teacher/*` | 教师 |
+| `StudentApiController` | `/student/*` | 学生 |
+| `PublicApiController` | `/public/*` | 游客 |
+| `AuthController` | `/auth/*` | 认证（登录/注册/验证码） |
+| NotificationController | `/{role}/notify/*` | 三端通知 |
 
-Adapter 控制器（`modules/adapter/`）负责：
-- 接收前端请求，调用 Facade / Service 执行业务逻辑
-- 返回 `Result<T>` 统一响应
+Adapter 控制器（`modules/adapter/`）负责接收前端请求，调用 Facade / Service 执行业务逻辑，返回 `Result<T>` 统一响应。
 
 ### 安全认证流程
 
@@ -149,12 +149,14 @@ Adapter 控制器（`modules/adapter/`）负责：
 4. `SecurityUtils.requireCurrentUserId()` 获取当前用户 ID
 5. `SecurityConfig` 按角色（STUDENT/TEACHER/ADMIN）配置端点权限
 6. 登入 token 加入 `InMemoryTokenBlacklistService`（Caffeine Cache）
+7. 公开接口限流：`PublicRateLimitFilter` 用 Caffeine Cache 限流（20 次/秒）
 
 ### 业务模块（modules/）
 
 ```
 work → audit → publish → score → scorebatch → rank → comment → prize
        → notification → notice → sensitive → userimport → auth → dict → log
+       → task → deleterequest
 ```
 
 模块间依赖方向：work → audit → publish → score/scorebatch → rank（只进不出）。
@@ -165,7 +167,27 @@ work → audit → publish → score → scorebatch → rank → comment → pri
 学生创建作品 → 上传附件/视频 → 提交审核
                                          → 管理员审核通过 → 教师评分 → 排行榜 → 发布展示
                                          → 管理员驳回 → 学生修改后重新提交
+学生待办：管理员创建批次 → 发布待办 → 学生待办列表 → 选择批次 → 提交作品
+删除申请：学生申请删除已审核作品 → 管理员审批 → 同意（执行删除）或拒绝
 ```
+
+## 新增模块说明
+
+### 学生待办（task 模块）
+- 表 `student_task`：userId, batchId, workId, title, content, status(0=待处理 1=已完成 2=已驳回 3=已截止)
+- 管理员创建批次发布待办 → 批量创建 student_task
+- 学生提交作品 → 自动标记完成；审核驳回 → 标记已驳回；管理员删除作品 → 重置为待处理
+- 数据库唯一索引 `(email, role_id, deleted)` 支持软删除后重新注册（物理删除用户后用 `physicalDeleteById`）
+
+### 删除申请（deleterequest 模块）
+- 表 `delete_request`：workId, studentId, reason, status(0=待处理 1=已同意 2=已拒绝), adminReply
+- 学生端：已通过作品可申请删除，填原因
+- 管理端：审核页新增「删除申请」Tab，可同意（执行 adminDeleteWork 清关联数据+发通知）或拒绝（填原因+发通知）
+
+### 在线体验（PreviewDialog 组件）
+- `components/PreviewDialog.vue`：弹窗 + iframe 内嵌预览
+- 支持小窗（70vw × 80vh）和全屏模式，白屏超时提示
+- **重要**：`el-dialog` 使用 `append-to-body`，弹窗 DOM 移出组件树，scoped 样式无效。样式必须放在全局 `<style>`（非 scoped）中，加 `!important` 覆盖 Element Plus 默认值
 
 ## 前端架构
 
@@ -176,42 +198,32 @@ frontend/src/
  ├── api/             # API 层（按角色分 admin/teacher/student/public）
  │   ├── request.ts   # Axios 实例 + 拦截器（token 注入、统一错误处理）
  │   ├── types.ts     # 共享类型（WorkListVO/WorkDetailVO/RankItem/UserInfo）
- │   ├── notify.ts    # 通知 API（三端共用，role 参数化）
- │   └── workAdapter.ts  # 作品响应数据适配转换
- ├── components/      # 共享组件（NotificationList/PaginationBar/AppThemeToggle）
+ │   └── student/task.ts / deleteRequest.ts  # 新增模块
+ ├── components/      # 共享组件（NotificationList/PaginationBar/AppThemeToggle/PreviewDialog）
  ├── composables/     # 组合式函数（useApiList/useCrudDialog/useNotificationPolling）
  ├── layout/          # 四端布局（Admin/Teacher/Student/Public）
  ├── router/          # 路由配置（modules/ 下按角色拆分）
  ├── stores/          # Pinia 状态（auth, theme）
- ├── utils/           # 工具函数（auth.ts, format.ts）
- └── views/           # 页面（admin 12页/teacher 4页/student 5页/public 4页）
+ └── views/           # 页面（admin 12页/teacher 4页/student 6页/public 4页）
 ```
 
 ### 关键约定
 
-- **响应拦截**：`request.ts` 中 `res.code === 0` 为成功，非零或网络错误弹出 `ElMessage.error()`
+- **响应拦截**：`request.ts` 中 `res.code === 0 || res.code === 200` 为成功，非零或网络错误弹出 `ElMessage.error()`
 - **分页**：`useApiList<T>(fetchFn)` + `<PaginationBar>`，page/size 由视图管理
 - **弹窗 CRUD**：admin 管理页用 `useCrudDialog()` 统一管理 create/edit/delete 状态
-- **通知**：三端共用 `<NotificationList>` + `useNotificationPolling`
 - **深色模式**：`<html data-theme="dark">` 切换，CSS 变量在 `style.css`
-
-### Vite 构建
-
-- `vue-tsc -b` 类型检查 + `vite build` 生产构建
-- Element Plus 按需导入（unplugin-auto-import + unplugin-vue-components）
-- gzip 预压缩（vite-plugin-compression）
-- 手动 chunk 拆分：vendor-vue（Vue 生态）、vendor-element（Element Plus）、vendor-echarts（仅控制台页面使用）
 
 ## 后端关键约定
 
 - **统一返回**：`Result<T>`（`ok(data)` / `fail(msg)`），异常由 `GlobalExceptionHandler` 捕获
-- **BaseEntity**：所有实体继承（雪花 id + createTime + updateTime + 逻辑删除 deleted）
+- **BaseEntity**：所有实体继承（雪花 id + createTime + updateTime + 逻辑删除 `deleted`）
 - **雪花 ID**：Jackson 全局 Long→String，防前端 JS 精度丢失
 - **分页**：`PageUtil.query(pageNum, pageSize, mapper, wrapperConsumer)` → `PageResult<T>`
 - **评分 Upsert**：`WorkScoreMapper.upsert()` 原子 INSERT ... ON DUPLICATE KEY UPDATE
-- **班级范围**：`ClassScopeUtil.parseToStringSet()` 解析 JSON 数组或旧版逗号分隔
 - **DeepSeek fallback**：`bypass`(dev) / `reject`(prod) / `warning`(test)
-- **文件上传校验**：扩展名白名单 + Hutool FileTypeUtil 魔数双重检测（拦截 HTML/JS/SVG 伪装）
+- **物理删除用户**：`SysUserMapper.physicalDeleteById()` 直接 DELETE，不触发 `@TableLogic`，确保邮箱和用户名可重新注册
+- **管理员删除作品**：`WorkServiceImpl.adminDeleteWork()` 清理 10 张关联表（附件/评分/评论/点赞/审核记录/成员/发布/标签/奖品发放/待办），发通知，重置待办
 
 ### 实体枚举
 
@@ -227,10 +239,9 @@ frontend/src/
 ### 测试结构
 
 **命名规范：**
-- 后端单元测试：`*Test.java`（如 `WorkServiceImplTest.java`），扩展 `BaseServiceTest`，Mockito 模拟 Mapper 层
-- 后端集成测试：`*ApiTest.java`（如 `AdminApiTest.java`），扩展 `BaseApiTest`（Spring Boot Test + 随机端口）
+- 后端单元测试：`*Test.java`（如 `WorkServiceImplTest`），扩展 `BaseServiceTest`，Mockito 模拟 Mapper 层
+- 后端集成测试：`*ApiTest.java`（如 `AdminApiTest`），扩展 `BaseApiTest`（Spring Boot Test + 随机端口）
 - 前端测试：`*.test.ts`（如 `index.test.ts`），Vitest + `@vue/test-utils`
-- 前端测试工具：`src/views/__tests__/test-utils.ts` 提供通用测试辅助函数
 
 **后端集成测试**：扩展 `BaseApiTest`，使用内置 `ApiClient` 发送 HTTP 请求并解析 JSON 响应：
 
@@ -240,33 +251,37 @@ frontend/src/
 - `testStuApi`：测试学生账号（teststu / test123）
 - `publicApi`：无 token 的公开端
 
-支持链式断言：`adminApi.get("/admin/work/list").assertOk().getData(...)`
+**后端单元测试**：扩展 `BaseServiceTest`，使用 Mockito 模拟 Mapper 层。注意：`@RequiredArgsConstructor` 新增依赖时需要同步更新测试类的构造函数调用和 `@Mock` 字段。
 
-**后端单元测试**：扩展 `BaseServiceTest`，使用 Mockito 模拟 Mapper 层。
-
-**集成测试依赖**：需运行中的 MySQL（数据库 jingxuan_test）+ Redis，配置在 `application-test.yml`。
+**集成测试依赖**：需运行中的 MySQL（数据库 `jingxuan_test`）+ Redis。CI 环境中不跑集成测试。
 
 ```bash
 # 运行集成测试时需设置数据库密码
-export DB_PASSWORD=your_password
-mvn test -Dtest="AdminApiTest"
+export DB_PASSWORD=252629
+mvn test
 ```
 
-**前端测试**：Vitest + @vue/test-utils。
-
-**测试数据**：`sql/business/test_data.sql` 包含学生、教师、作品、评分等演示数据，用于开发调试和答辩演示。
-
-### 测试状态
+### 测试状态（当前）
 
 | 类型 | 通过率 | 运行方式 |
 |------|--------|---------|
 | 前端单元测试 | 56/56 100% | `npm run test` |
-| 后端单元测试 | 97/97 100% | `mvn test -Dtest="com.jingxuan.modules.**"` |
-| 集成测试 | 77/77 100% | `mvn test`（需 MySQL+Redis） |
-| 接口测试 | 109/109 100% | 同集成测试 |
+| 后端单元测试 | 299/299 100% | `mvn test -Dtest="com.jingxuan.modules.**"` |
+| 集成测试 | 全部通过 | `mvn test`（需 MySQL+Redis） |
+| 全部后端测试 | 317/317 100% | `mvn test`（需 MySQL+Redis） |
 | 冒烟测试 | 14/14 100% | `bash scripts/smoke-test.sh` |
 
-详细报告请参阅 `docs/` 目录（16 份文档：系统说明书、需求文档、测试计划/用例/报告、运维手册等）。
+### 关键测试文件
+
+| 测试文件 | 用例数 | 覆盖 |
+|---------|--------|------|
+| `WorkServiceImplTest` | 13 | CRUD、提交审核、管理员删除 |
+| `ScoreServiceImplTest` | 12 | 评分 upsert、维度校验、DeepSeek fallback |
+| `ScoreBatchServiceImplTest` | 8 | 批次 CRUD、排行榜公示、发布待办 |
+| `AuditServiceImplTest` | 6 | 审核通过/驳回、审核历史 |
+| `DeleteRequestServiceImplTest` | 8 | 学生提交申请、管理员同意/拒绝 |
+| `ScoreBatchServiceImplTest` | 8 | 批次 CRUD、发布待办 |
+| `AiUserImportServiceImplTest` | 9 | AI 导入解析 |
 
 ## 数据库迁移
 
@@ -274,7 +289,7 @@ mvn test -Dtest="AdminApiTest"
 - 业务表：`sql/business/work_schema.sql`
 - 增量迁移：`sql/business/yyyy-MM-dd-描述.sql`
 - 所有实体继承 `BaseEntity`（雪花算法 id、createTime、updateTime、逻辑删除 deleted）
-- Docker 首次部署自动执行 `init_schema.sql`
+- 新增唯一索引注意兼容软删除：`UNIQUE KEY uk_email_role_deleted (email, role_id, deleted)`
 
 ## 评分规则
 
@@ -285,6 +300,7 @@ mvn test -Dtest="AdminApiTest"
 - `.env` 含 `DB_PASSWORD`、`DEEPSEEK_API_KEY`、邮件配置，**严禁提交到 Git**
 - JWT 密钥在 `application.yml` 的 `jwt.secret`，生产环境请替换
 - 文件上传：扩展名白名单 + 魔数（Hutool FileTypeUtil）双重检测
-- 缓存/限流：`PublicRateLimitFilter` 用 Caffeine Cache 限流（20 次/秒），`RankServiceImpl` 用 Redis 缓存排行榜
 - Token 黑名单：`InMemoryTokenBlacklistService` 用 Caffeine Cache 存储登出 token
 - Nginx 已配置 CSP/X-Frame-Options/X-Content-Type-Options 等安全头
+- 物理删除用户时注意清理关联数据（delete_request, student_task, notification）
+- `frame-src '*'` 允许 iframe 嵌入外部项目地址（在线体验功能需要）
