@@ -9,7 +9,7 @@
             把草稿、审核中与已发布内容放回同一条创作时间线里，便于继续修改、提交和回看展示状态。
           </p>
         </div>
-        <el-button type="primary" @click="router.push('/student/works/create')">
+        <el-button type="primary" @click="handleCreateWork">
           <el-icon><Plus /></el-icon>提交新作品
         </el-button>
       </div>
@@ -135,6 +135,37 @@
       <p>{{ rejectReason }}</p>
     </el-drawer>
 
+    <!-- 选择评分批次弹窗 -->
+    <el-dialog v-model="batchDialogVisible" title="选择评分批次" width="520px" destroy-on-close>
+      <p style="margin-bottom:16px;font-size:14px;color:var(--text-secondary)">
+        请选择你要提交作品的目标评分批次：
+      </p>
+      <div v-if="batchLoading" v-loading="batchLoading" style="min-height:80px" />
+      <template v-else>
+        <el-radio-group v-model="selectedBatchId" class="batch-radio-group">
+          <el-radio
+            v-for="batch in batchList"
+            :key="batch.id"
+            :value="batch.id"
+            class="batch-radio-item"
+          >
+            <div class="batch-radio-content">
+              <strong>{{ batch.batchName }}</strong>
+              <span class="batch-radio-time">
+                {{ batch.startTime?.replace('T', ' ') }} ~ {{ batch.endTime?.replace('T', ' ') }}
+              </span>
+            </div>
+          </el-radio>
+        </el-radio-group>
+      </template>
+      <template #footer>
+        <el-button @click="batchDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!selectedBatchId" @click="confirmBatch">
+          确定，去提交作品
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 申请删除作品弹窗 -->
     <el-dialog v-model="deleteRequestVisible" title="申请删除作品" width="480px" destroy-on-close>
       <p style="margin-bottom:12px;font-size:14px;color:var(--text-secondary)">
@@ -164,6 +195,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getMyWorks, deleteWork, type WorkItem } from '@/api/student/work'
+import { getAvailableBatches, type BatchItem } from '@/api/student/task'
 import { useAuthStore } from '@/stores/student/auth'
 import { useApiList } from '@/composables/useApiList'
 
@@ -185,6 +217,45 @@ const deleteRequestVisible = ref(false)
 const deleteRequestSubmitting = ref(false)
 const deleteRequestWork = ref<WorkItem | null>(null)
 const deleteRequestReason = ref('')
+
+// 批次选择弹窗
+const batchDialogVisible = ref(false)
+const batchLoading = ref(false)
+const batchList = ref<BatchItem[]>([])
+const selectedBatchId = ref<number | null>(null)
+
+async function handleCreateWork() {
+  batchLoading.value = true
+  batchDialogVisible.value = true
+  try {
+    const res = await getAvailableBatches()
+    const list: BatchItem[] = res.data || []
+    if (list.length === 0) {
+      ElMessage.warning('当前暂无活跃的评分批次')
+      batchDialogVisible.value = false
+      return
+    }
+    if (list.length === 1) {
+      // 只有一个批次，直接跳转
+      batchDialogVisible.value = false
+      router.push(`/student/works/create?batchId=${list[0].id}`)
+      return
+    }
+    // 多个批次，展示选择弹窗
+    batchList.value = list
+    selectedBatchId.value = null
+  } catch {
+    batchDialogVisible.value = false
+  } finally {
+    batchLoading.value = false
+  }
+}
+
+function confirmBatch() {
+  if (!selectedBatchId.value) return
+  batchDialogVisible.value = false
+  router.push(`/student/works/create?batchId=${selectedBatchId.value}`)
+}
 
 function openDeleteRequest(item: WorkItem) {
   deleteRequestWork.value = item
@@ -248,5 +319,31 @@ onMounted(reload)
 .my-works {
   max-width: 1120px;
   margin: 0 auto;
+}
+
+.batch-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.batch-radio-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-right: 0;
+}
+
+.batch-radio-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.batch-radio-time {
+  font-size: 12px;
+  color: var(--text-muted, #909399);
 }
 </style>

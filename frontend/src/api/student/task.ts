@@ -15,6 +15,15 @@ export interface StudentTask {
   endTime?: string
 }
 
+/** 评分批次（用于批次选择弹窗） */
+export interface BatchItem {
+  id: number
+  batchName: string
+  startTime: string
+  endTime: string
+  status: number
+}
+
 export function getMyTasks() {
   return request.get('/student/tasks')
 }
@@ -23,4 +32,9 @@ export function completeTask(taskId: number, workId: number) {
   return request.post(`/student/tasks/${taskId}/complete`, null, {
     params: { workId }
   })
+}
+
+/** 获取当前学生可参与的评分批次列表 */
+export function getAvailableBatches() {
+  return request.get('/student/batch/available')
 }

@@ -92,28 +92,24 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         }
         Long currentUserId = SecurityUtils.requireCurrentUserId();
 
-        // 同一学生在当前活跃批次中只能提交一个作品
-        ScoreBatch activeBatch = scoreBatchMapper.selectOne(
-                Wrappers.<ScoreBatch>lambdaQuery()
-                        .eq(ScoreBatch::getStatus, 1)
-                        .orderByDesc(ScoreBatch::getCreateTime)
-                        .last("LIMIT 1"));
+        // 确定目标批次：优先使用前端传入的 batchId，未指定则取最新活跃批次
+        ScoreBatch targetBatch = resolveTargetBatch(request.getBatchId());
         // 无论是否有活跃批次，都先回填已注册成员的 studentId（两者后续用途不同：studentId 用于成员识别与权限校验，批次唯一性校验仅在有活跃批次时执行）
         if (CollectionUtil.isNotEmpty(request.getMembers())) {
             workMemberPolicyService.resolveMemberStudentIds(request.getMembers());
         }
 
-        if (activeBatch != null) {
+        if (targetBatch != null) {
             // 检查提交者是否已有作品在该批次中
             Long submitterCount = baseMapper.selectCount(
                     Wrappers.<Work>lambdaQuery()
                             .eq(Work::getSubmitterId, currentUserId)
-                            .eq(Work::getBatchId, activeBatch.getId()));
+                            .eq(Work::getBatchId, targetBatch.getId()));
             if (submitterCount > 0) {
-                throw new BusinessException("您在当前评分批次中已有作品，每个学生只能提交一个作品");
+                throw new BusinessException("您在该评分批次中已有作品，每个学生只能提交一个作品");
             }
             // 检查注册成员是否已在同一批次的其他作品中
-            workMemberPolicyService.ensureMembersAvailableInBatch(request.getMembers(), activeBatch.getId(), null);
+            workMemberPolicyService.ensureMembersAvailableInBatch(request.getMembers(), targetBatch.getId(), null);
         }
 
         // 内容安全审核：作品标题、简介、运行说明
@@ -129,8 +125,8 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         work.setRunDesc(request.getRunDesc());
         work.setStatus(AuditStatusEnum.DRAFT.getValue());
         work.setSubmitterId(currentUserId);
-        if (activeBatch != null) {
-            work.setBatchId(activeBatch.getId());
+        if (targetBatch != null) {
+            work.setBatchId(targetBatch.getId());
         }
         baseMapper.insert(work);
 
@@ -712,5 +708,28 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
             }
         }
         return dto;
+    }
+
+    /**
+     * 解析目标批次：优先使用前端指定的 batchId，未指定则取最新活跃批次
+     */
+    private ScoreBatch resolveTargetBatch(Long batchId) {
+        if (batchId != null) {
+            ScoreBatch batch = scoreBatchMapper.selectById(batchId);
+            if (batch == null || batch.getDeleted() != 0) {
+                throw new BusinessException("指定的评分批次不存在");
+            }
+            if (batch.getStatus() != 1) {
+                throw new BusinessException("指定的评分批次已失效");
+            }
+            return batch;
+        }
+        // 未指定 batchId 时取最新活跃批次（兼容非待办入口的创建）
+        return scoreBatchMapper.selectOne(
+                Wrappers.<ScoreBatch>lambdaQuery()
+                        .eq(ScoreBatch::getStatus, 1)
+                        .eq(ScoreBatch::getDeleted, 0)
+                        .orderByDesc(ScoreBatch::getCreateTime)
+                        .last("LIMIT 1"));
     }
 }
