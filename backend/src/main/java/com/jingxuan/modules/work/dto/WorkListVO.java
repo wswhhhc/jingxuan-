@@ -45,6 +45,12 @@ public class WorkListVO {
     @Schema(description = "发布状态")
     private Integer publishStatus;
 
+    @Schema(description = "批次ID")
+    private Long batchId;
+
+    @Schema(description = "批次名称")
+    private String batchName;
+
     @Schema(description = "是否精选")
     private Integer featured;
 

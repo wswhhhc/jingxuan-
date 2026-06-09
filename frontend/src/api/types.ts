@@ -14,6 +14,8 @@ export interface WorkListVO {
   publishStatus: number   // 0=未发布 1=已发布 2=已下线
   featured: number
   memberCount: number
+  batchId?: number
+  batchName?: string
   scored?: boolean
 }
 

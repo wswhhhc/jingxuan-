@@ -665,6 +665,15 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
         vo.setSubmitTime(work.getSubmitTime());
         vo.setSubmitterName(resolveSubmitterName(work.getSubmitterId()));
 
+        // 批次信息
+        vo.setBatchId(work.getBatchId());
+        if (work.getBatchId() != null) {
+            ScoreBatch batch = scoreBatchMapper.selectById(work.getBatchId());
+            if (batch != null) {
+                vo.setBatchName(batch.getBatchName());
+            }
+        }
+
         // 发布信息
         WorkPublish publish = workPublishMapper.selectByWorkId(work.getId());
         if (publish != null) {

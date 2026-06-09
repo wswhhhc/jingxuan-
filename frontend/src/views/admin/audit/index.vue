@@ -65,6 +65,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="title" label="作品名称" min-width="180" show-overflow-tooltip />
+        <el-table-column label="所属批次" width="160" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span>{{ row.batchName || '-' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="submitterName" label="提交人" width="110" />
         <el-table-column prop="techStack" label="技术栈" width="150" show-overflow-tooltip />
         <el-table-column label="提交时间" width="184">
