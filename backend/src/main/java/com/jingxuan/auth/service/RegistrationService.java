@@ -49,7 +49,7 @@ public class RegistrationService {
         if (mailSender == null) {
             log.warn("邮箱服务未配置（MAIL_* 环境变量），验证码仅记录日志");
         }
-        if (sysUserMapper.countByEmail(email) > 0) {
+        if (sysUserMapper.countByEmailAndRole(email, roleId) > 0) {
             throw new BusinessException("该邮箱已被注册");
         }
 
@@ -102,7 +102,7 @@ public class RegistrationService {
         if (sysUserMapper.countByUsername(username) > 0) {
             throw new BusinessException("该用户名已被注册");
         }
-        if (sysUserMapper.countByEmail(email) > 0) {
+        if (sysUserMapper.countByEmailAndRole(email, roleId) > 0) {
             throw new BusinessException("该邮箱已被注册");
         }
 

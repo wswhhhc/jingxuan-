@@ -40,6 +40,9 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
     @Select("SELECT COUNT(1) FROM sys_user WHERE email = #{email} AND deleted = 0")
     int countByEmail(@Param("email") String email);
 
+    @Select("SELECT COUNT(1) FROM sys_user WHERE email = #{email} AND role_id = #{roleId} AND deleted = 0")
+    int countByEmailAndRole(@Param("email") String email, @Param("roleId") Integer roleId);
+
     /**
      * 物理删除用户（不触发 @TableLogic 逻辑删除）
      */
