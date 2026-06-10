@@ -11,6 +11,7 @@ import com.jingxuan.mapper.SysUserMapper;
 import com.jingxuan.mapper.SysNoticeMapper;
 import com.jingxuan.modules.notice.dto.NoticeRequest;
 import com.jingxuan.modules.notice.service.NoticeService;
+import com.jingxuan.modules.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 public class NoticeServiceImpl extends ServiceImpl<SysNoticeMapper, SysNotice> implements NoticeService {
 
     private final SysUserMapper sysUserMapper;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -41,12 +43,42 @@ public class NoticeServiceImpl extends ServiceImpl<SysNoticeMapper, SysNotice> i
         notice.setTopFlag(request.getTopFlag());
         notice.setStatus(request.getStatus());
         notice.setPublisherId(publisherId);
-        // 如果状态为已发布，同时设置发布时间
         if (request.getStatus() != null && request.getStatus() == 1) {
             notice.setPublishTime(LocalDateTime.now());
         }
         baseMapper.insert(notice);
+        // 已发布状态则发送通知给所有学生
+        if (request.getStatus() != null && request.getStatus() == 1) {
+            sendNotificationToStudents(request.getTitle(), request.getContent(), notice.getId());
+        }
         return notice.getId();
+    }
+
+    /**
+     * 公告发布后发送系统通知给所有启用的学生用户
+     */
+    private void sendNotificationToStudents(String title, String content, Long noticeId) {
+        try {
+            List<Long> studentIds = sysUserMapper.selectList(
+                    Wrappers.<SysUser>lambdaQuery()
+                            .eq(SysUser::getRoleId, 1)
+                            .eq(SysUser::getDeleted, 0)
+                            .eq(SysUser::getStatus, 1)
+            ).stream().map(SysUser::getId).collect(Collectors.toList());
+
+            if (!studentIds.isEmpty()) {
+                notificationService.sendBatchNotification(
+                        studentIds,
+                        "系统公告：" + title,
+                        content,
+                        "NOTICE",
+                        noticeId
+                );
+                log.info("公告发布通知已发送给 {} 名学生: noticeId={}", studentIds.size(), noticeId);
+            }
+        } catch (Exception e) {
+            log.warn("发送公告通知失败，不影响公告发布: noticeId={}", noticeId, e);
+        }
     }
 
     @Override
@@ -58,21 +90,28 @@ public class NoticeServiceImpl extends ServiceImpl<SysNoticeMapper, SysNotice> i
         notice.setContent(request.getContent());
         notice.setTopFlag(request.getTopFlag());
         notice.setStatus(request.getStatus());
-        // 如果置为已发布，设置发布时间
         if (request.getStatus() != null && request.getStatus() == 1) {
             notice.setPublishTime(LocalDateTime.now());
         }
         baseMapper.updateById(notice);
+        // 更新为已发布时发送通知
+        if (request.getStatus() != null && request.getStatus() == 1) {
+            sendNotificationToStudents(request.getTitle(), request.getContent(), id);
+        }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void publishNotice(Long id) {
-        SysNotice notice = new SysNotice();
+        SysNotice notice = baseMapper.selectById(id);
+        if (notice == null) {
+            return;
+        }
         notice.setId(id);
         notice.setStatus(1);
         notice.setPublishTime(LocalDateTime.now());
         baseMapper.updateById(notice);
+        sendNotificationToStudents(notice.getTitle(), notice.getContent(), id);
     }
 
     @Override
