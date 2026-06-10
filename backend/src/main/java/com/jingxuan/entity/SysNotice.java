@@ -20,6 +20,11 @@ public class SysNotice extends BaseEntity {
     private Integer topFlag;
     private Integer status;
 
+    /**
+     * 通知发送范围：student=仅学生  teacher=仅教师  all=全体
+     */
+    private String targetScope;
+
     @TableField(exist = false)
     private String publisherName;
 }

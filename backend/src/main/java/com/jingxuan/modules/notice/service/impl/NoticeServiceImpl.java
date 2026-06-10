@@ -42,39 +42,50 @@ public class NoticeServiceImpl extends ServiceImpl<SysNoticeMapper, SysNotice> i
         notice.setContent(request.getContent());
         notice.setTopFlag(request.getTopFlag());
         notice.setStatus(request.getStatus());
+        notice.setTargetScope(request.getTargetScope());
         notice.setPublisherId(publisherId);
         if (request.getStatus() != null && request.getStatus() == 1) {
             notice.setPublishTime(LocalDateTime.now());
         }
         baseMapper.insert(notice);
-        // 已发布状态则发送通知给所有学生
+        // 已发布状态则发送通知
         if (request.getStatus() != null && request.getStatus() == 1) {
-            sendNotificationToStudents(request.getTitle(), request.getContent(), notice.getId());
+            sendNotificationByScope(request.getTargetScope(), request.getTitle(), request.getContent(), notice.getId());
         }
         return notice.getId();
     }
 
     /**
-     * 公告发布后发送系统通知给所有启用的学生用户
+     * 根据目标范围发送系统通知
      */
-    private void sendNotificationToStudents(String title, String content, Long noticeId) {
+    private void sendNotificationByScope(String targetScope, String title, String content, Long noticeId) {
         try {
-            List<Long> studentIds = sysUserMapper.selectList(
+            List<Integer> roleIds;
+            if ("teacher".equals(targetScope)) {
+                roleIds = List.of(2);
+            } else if ("student".equals(targetScope)) {
+                roleIds = List.of(1);
+            } else {
+                // all 或未指定则发送给全体（学生 + 教师）
+                roleIds = List.of(1, 2);
+            }
+
+            List<Long> userIds = sysUserMapper.selectList(
                     Wrappers.<SysUser>lambdaQuery()
-                            .eq(SysUser::getRoleId, 1)
+                            .in(SysUser::getRoleId, roleIds)
                             .eq(SysUser::getDeleted, 0)
                             .eq(SysUser::getStatus, 1)
             ).stream().map(SysUser::getId).collect(Collectors.toList());
 
-            if (!studentIds.isEmpty()) {
+            if (!userIds.isEmpty()) {
                 notificationService.sendBatchNotification(
-                        studentIds,
+                        userIds,
                         "系统公告：" + title,
                         content,
                         "NOTICE",
                         noticeId
                 );
-                log.info("公告发布通知已发送给 {} 名学生: noticeId={}", studentIds.size(), noticeId);
+                log.info("公告通知已发送给 {} 人(scope={}): noticeId={}", userIds.size(), targetScope, noticeId);
             }
         } catch (Exception e) {
             log.warn("发送公告通知失败，不影响公告发布: noticeId={}", noticeId, e);
@@ -93,10 +104,11 @@ public class NoticeServiceImpl extends ServiceImpl<SysNoticeMapper, SysNotice> i
         if (request.getStatus() != null && request.getStatus() == 1) {
             notice.setPublishTime(LocalDateTime.now());
         }
+        notice.setTargetScope(request.getTargetScope());
         baseMapper.updateById(notice);
         // 更新为已发布时发送通知
         if (request.getStatus() != null && request.getStatus() == 1) {
-            sendNotificationToStudents(request.getTitle(), request.getContent(), id);
+            sendNotificationByScope(request.getTargetScope(), request.getTitle(), request.getContent(), id);
         }
     }
 
@@ -107,11 +119,10 @@ public class NoticeServiceImpl extends ServiceImpl<SysNoticeMapper, SysNotice> i
         if (notice == null) {
             return;
         }
-        notice.setId(id);
         notice.setStatus(1);
         notice.setPublishTime(LocalDateTime.now());
         baseMapper.updateById(notice);
-        sendNotificationToStudents(notice.getTitle(), notice.getContent(), id);
+        sendNotificationByScope(notice.getTargetScope(), notice.getTitle(), notice.getContent(), id);
     }
 
     @Override

@@ -33,6 +33,13 @@
             {{ row.publisherName || row.publisherId || '--' }}
           </template>
         </el-table-column>
+        <el-table-column label="发送范围" width="130">
+          <template #default="{ row }">
+            <el-tag size="small" :type="scopeTagType(row.targetScope)">
+              {{ scopeLabel(row.targetScope) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="publishTime" label="发布时间" width="170" />
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
@@ -55,6 +62,13 @@
         </el-form-item>
         <el-form-item label="内容">
           <el-input v-model="form.content" type="textarea" :rows="8" placeholder="公告内容" />
+        </el-form-item>
+        <el-form-item label="发送范围">
+          <el-radio-group v-model="form.targetScope">
+            <el-radio value="all">全体（学生+教师）</el-radio>
+            <el-radio value="student">仅学生</el-radio>
+            <el-radio value="teacher">仅教师</el-radio>
+          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -94,7 +108,7 @@ const handleSearch = () => { page.value = 1; reload() }
 const { editVisible, isEdit, editId, openCreate, openEdit, save } = useCrudDialog()
 const detailVisible = ref(false)
 const detailData = ref<NoticeItem | null>(null)
-const form = reactive({ title: '', content: '' })
+const form = reactive({ title: '', content: '', targetScope: 'all' })
 
 
 
@@ -108,10 +122,12 @@ const showEdit = (row?: NoticeItem) => {
     openEdit(row.id)
     form.title = row.title
     form.content = row.content
+    form.targetScope = (row as any).targetScope || 'all'
   } else {
     openCreate()
     form.title = ''
     form.content = ''
+    form.targetScope = 'all'
   }
 }
 
@@ -122,11 +138,21 @@ const handleSave = async () => {
   }
   const ok = await save(
     () => isEdit.value
-      ? updateNotice(editId.value, { title: form.title, content: form.content })
-      : createNotice({ title: form.title, content: form.content, status: 1 }),
+      ? updateNotice(editId.value, { title: form.title, content: form.content, targetScope: form.targetScope })
+      : createNotice({ title: form.title, content: form.content, status: 1, targetScope: form.targetScope }),
     { label: '公告' }
   )
   if (ok) reload()
+}
+
+function scopeLabel(scope?: string) {
+  const map: Record<string, string> = { all: '全体', student: '学生', teacher: '教师' }
+  return map[scope || 'all'] || '全体'
+}
+
+function scopeTagType(scope?: string): string {
+  const map: Record<string, string> = { all: '', student: 'success', teacher: 'warning' }
+  return map[scope || 'all'] || ''
 }
 
 const handleDelete = async (row: NoticeItem) => {
