@@ -38,7 +38,7 @@ export interface WorkForm {
   runDescription: string
   members: WorkMember[]
   attachments: WorkAttachment[]
-  batchId?: number | null
+  batchId?: string | null
 }
 
 export interface WorkItem {

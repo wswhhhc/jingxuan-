@@ -722,6 +722,13 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
             if (batch.getStatus() != 1) {
                 throw new BusinessException("指定的评分批次已失效");
             }
+            LocalDateTime now = LocalDateTime.now();
+            if (batch.getStartTime() != null && now.isBefore(batch.getStartTime())) {
+                throw new BusinessException("该评分批次尚未开始");
+            }
+            if (batch.getEndTime() != null && now.isAfter(batch.getEndTime())) {
+                throw new BusinessException("该评分批次已截止");
+            }
             return batch;
         }
         // 未指定 batchId 时取最新活跃批次（兼容非待办入口的创建）
@@ -729,6 +736,8 @@ public class WorkServiceImpl extends ServiceImpl<WorkMapper, Work> implements Wo
                 Wrappers.<ScoreBatch>lambdaQuery()
                         .eq(ScoreBatch::getStatus, 1)
                         .eq(ScoreBatch::getDeleted, 0)
+                        .le(ScoreBatch::getStartTime, LocalDateTime.now())
+                        .ge(ScoreBatch::getEndTime, LocalDateTime.now())
                         .orderByDesc(ScoreBatch::getCreateTime)
                         .last("LIMIT 1"));
     }
