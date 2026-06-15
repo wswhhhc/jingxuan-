@@ -67,7 +67,7 @@ request.interceptors.response.use(
     if (res.code === 401) {
       clearAuthStorage()
       if (!loginRequest) {
-        window.location.href = '/login'
+        window.location.href = '/jingxuan/login'
       }
     }
     return Promise.reject(new Error(res.message || (loginRequest ? '账号或密码错误' : '请求失败')))

@@ -7,6 +7,7 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import viteCompression from 'vite-plugin-compression'
 
 export default defineConfig({
+  base: '/jingxuan/',
   plugins: [
     vue(),
 

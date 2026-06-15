@@ -49,7 +49,7 @@
           v-model:page-size="size"
           :total="total"
           layout="total, prev, pager, next"
-          small
+          size="small"
           @change="loadList"
         />
       </div>

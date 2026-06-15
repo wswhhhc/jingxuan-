@@ -41,7 +41,7 @@
         </el-table>
 
         <div class="workspace-pagination">
-          <PaginationBar v-model:page="rolePage" v-model:size="roleSize" :total="roleTotal" small @change="loadRoles" />
+          <PaginationBar v-model:page="rolePage" v-model:size="roleSize" :total="roleTotal" @change="loadRoles" />
         </div>
       </section>
 

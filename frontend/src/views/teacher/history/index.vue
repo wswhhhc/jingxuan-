@@ -53,7 +53,7 @@
         <el-empty description="暂无评分记录" :image-size="72" />
       </div>
 
-      <PaginationBar v-model:page="query.page" v-model:size="query.size" :total="total" small @change="reload" />
+      <PaginationBar v-model:page="query.page" v-model:size="query.size" :total="total" @change="reload" />
     </section>
   </div>
 </template>

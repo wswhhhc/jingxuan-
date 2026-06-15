@@ -50,11 +50,11 @@
         </div>
         <div class="workspace-toolbar__actions">
           <el-radio-group v-model="filterStatus" @change="handleFilterChange">
-            <el-radio-button label="">全部</el-radio-button>
-            <el-radio-button label="draft">草稿</el-radio-button>
-            <el-radio-button label="submitted">审核中</el-radio-button>
-            <el-radio-button label="rejected">已驳回</el-radio-button>
-            <el-radio-button label="approved">已通过</el-radio-button>
+            <el-radio-button value="">全部</el-radio-button>
+            <el-radio-button value="draft">草稿</el-radio-button>
+            <el-radio-button value="submitted">审核中</el-radio-button>
+            <el-radio-button value="rejected">已驳回</el-radio-button>
+            <el-radio-button value="approved">已通过</el-radio-button>
           </el-radio-group>
         </div>
       </div>
